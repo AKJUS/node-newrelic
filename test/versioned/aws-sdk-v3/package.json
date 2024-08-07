@@ -1,7 +1,7 @@
 {
   "name": "aws-sdk-v3-tests",
   "engines": {
-    "node": ">=16.0"
+    "node": ">=18.0"
   },
   "targets": [
     {"name": "@aws-sdk/client-sqs", "minAgentVersion": "8.7.1"},
@@ -17,7 +17,7 @@
   "tests": [
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-api-gateway": {
@@ -31,7 +31,7 @@
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-elasticache": {
@@ -45,7 +45,7 @@
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-elastic-load-balancing": {
@@ -59,7 +59,7 @@
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-lambda": {
@@ -73,7 +73,7 @@
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-rds": {
@@ -87,7 +87,7 @@
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-redshift": {
@@ -101,7 +101,7 @@
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-rekognition": {
@@ -115,7 +115,7 @@
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-s3": {
@@ -129,7 +129,7 @@
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-ses": {
@@ -143,12 +143,16 @@
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-sns": {
           "versions": ">=3.0.0 <=3.193.0 || >3.196.0 <3.377.0 || >3.377.0 ",
           "samples": 10
+        },
+        "@aws-sdk/smithy-client": {
+          "versions": ">=3.47.0 <3.370.0",
+          "samples": 1
         }
       },
       "files": [
@@ -157,7 +161,7 @@
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-sqs": {
@@ -171,7 +175,7 @@
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-dynamodb": {
@@ -185,7 +189,7 @@
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/util-dynamodb": "latest",
@@ -201,10 +205,14 @@
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
-        "@aws-sdk/client-bedrock-runtime": "^3.474.0"
+        "@aws-sdk/client-bedrock-runtime": "^3.474.0",
+        "@smithy/smithy-client": {
+          "versions": ">=2.0.0",
+          "samples": 1
+        }
       },
       "files": [
         "bedrock-chat-completions.tap.js",
