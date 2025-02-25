@@ -32,6 +32,7 @@ const obfuscate = require('./lib/util/sql/obfuscate')
 const { DESTINATIONS } = require('./lib/config/attribute-filter')
 const parse = require('module-details-from-path')
 const { isSimpleObject } = require('./lib/util/objects')
+const { AsyncLocalStorage } = require('async_hooks')
 
 /*
  *
@@ -303,8 +304,7 @@ API.prototype.addCustomAttribute = function addCustomAttribute(key, value) {
  * See documentation for newrelic.addCustomAttribute for more information on
  * setting custom attributes.
  *
- * An example of setting a custom attribute object:
- *
+ * @example
  *    newrelic.addCustomAttributes({test: 'value', test2: 'value2'});
  *
  * @param {object} [atts] Attribute object
@@ -331,7 +331,7 @@ API.prototype.addCustomAttributes = function addCustomAttributes(atts) {
  *
  * See documentation for newrelic.addCustomSpanAttribute for more information.
  *
- * An example of setting a custom span attribute:
+ * @example
  *
  *    newrelic.addCustomSpanAttribute({test: 'value', test2: 'value2'})
  *
@@ -400,20 +400,19 @@ API.prototype.addCustomSpanAttribute = function addCustomSpanAttribute(key, valu
  * `Error` or one of its subtypes, but the API will handle strings and objects
  * that have an attached `.message` or `.stack` property.
  *
- * An example of using this function is
- *
- *    try {
- *      performSomeTask();
- *    } catch (err) {
- *      newrelic.noticeError(
- *        err,
- *        {extraInformation: "error already handled in the application"},
- *        true
- *      );
- *    }
- *
  * NOTE: Errors that are recorded using this method do _not_ obey the
  * `ignore_status_codes` configuration.
+ *
+ * @example
+ * try {
+ *  performSomeTask();
+ * } catch (err) {
+ *  newrelic.noticeError(
+ *    err,
+ *    {extraInformation: "error already handled in the application"},
+ *    true
+ *  );
+ * }
  *
  * @param {Error} error
  *  The error to be traced.
@@ -473,13 +472,12 @@ API.prototype.noticeError = function noticeError(error, customAttributes, expect
  * If application log forwarding is disabled in the agent
  * configuration, this function does nothing.
  *
- * An example of using this function is
- *
- *    newrelic.recordLogEvent({
- *       message: 'cannot find file',
- *       level: 'ERROR',
- *       error: new SystemError('missing.txt')
- *    })
+ * @example
+ * newrelic.recordLogEvent({
+ *  message: 'cannot find file',
+ *  level: 'ERROR',
+ *  error: new SystemError('missing.txt')
+ * })
  *
  * @param {object} logEvent The log event object to send. Any
  *   attributes besides `message`, `level`, `timestamp`, and `error` are
@@ -515,7 +513,6 @@ API.prototype.recordLogEvent = function recordLogEvent(logEvent = {}) {
     )
     return
   }
-  logEvent.message = applicationLogging.truncate(logEvent.message)
 
   if (!logEvent.level) {
     logger.debug('no log level set, setting it to UNKNOWN')
@@ -553,20 +550,21 @@ API.prototype.recordLogEvent = function recordLogEvent(logEvent = {}) {
  * GUIDs, or timestamps), the rule will generate too many metrics and
  * potentially get your application blocked by New Relic.
  *
- * An example of a good rule with replacements:
  *
- *   newrelic.addNamingRule('^/storefront/(v[1-5])/(item|category|tag)',
- *                          'CommerceAPI/$1/$2')
+ * @example
+ * // An example of a good rule with replacements:
+ * newrelic.addNamingRule('^/storefront/(v[1-5])/(item|category|tag)',
+ *                        'CommerceAPI/$1/$2')
  *
- * An example of a bad rule with replacements:
+ * @example
+ * // An example of a bad rule with replacements:
+ * newrelic.addNamingRule('^/item/([0-9a-f]+)', 'Item/$1')
  *
- *   newrelic.addNamingRule('^/item/([0-9a-f]+)', 'Item/$1')
+ * // Keep in mind that the original URL and any query parameters will be sent
+ * // along with the request, so slow transactions will still be identifiable.
  *
- * Keep in mind that the original URL and any query parameters will be sent
- * along with the request, so slow transactions will still be identifiable.
- *
- * Naming rules can not be removed once added. They can also be added via the
- * agent's configuration. See configuration documentation for details.
+ * // Naming rules can not be removed once added. They can also be added via the
+ * // agent's configuration. See configuration documentation for details.
  *
  * @param {RegExp} pattern The pattern to rename (with capture groups).
  * @param {string} name    The name to use for the transaction.
@@ -590,8 +588,7 @@ API.prototype.addNamingRule = function addNamingRule(pattern, name) {
  * distorting an app's apdex or mean response time. Pattern may be a (standard
  * JavaScript) RegExp or a string.
  *
- * Example:
- *
+ * @example
  *   newrelic.addIgnoringRule('^/socket\\.io/')
  *
  * @param {RegExp} pattern The pattern to ignore.
@@ -907,7 +904,7 @@ API.prototype.startSegment = function startSegment(name, record, handler, callba
   // Create the segment and call the handler.
   const wrappedHandler = this.shim.record(handler, function handlerNamer(shim) {
     return {
-      name: name,
+      name,
       recorder: record ? customRecorder : null,
       callback: callback ? shim.FIRST : null,
       promise: !callback
@@ -928,9 +925,9 @@ API.prototype.startSegment = function startSegment(name, record, handler, callba
  *    will be ended when {@link TransactionHandle#end} is called in the user's code.
  *
  * @example
- * var newrelic = require('newrelic')
+ * const newrelic = require('newrelic')
  * newrelic.startWebTransaction('/some/url/path', function() {
- *   var transaction = newrelic.getTransaction()
+ *   const transaction = newrelic.getTransaction()
  *   setTimeout(function() {
  *     // do some work
  *     transaction.end()
@@ -963,19 +960,21 @@ API.prototype.startWebTransaction = function startWebTransaction(url, handle) {
 
   const shim = this.shim
   const tracer = this.agent.tracer
-  const parent = tracer.getTransaction()
+  const parentTx = tracer.getTransaction()
 
   assignCLMSymbol(shim, handle)
   return tracer.transactionNestProxy('web', function startWebSegment() {
-    const tx = tracer.getTransaction()
+    const context = tracer.getContext()
+    const tx = context?.transaction
+    const parent = context?.segment
 
     if (!tx) {
       return handle.apply(this, arguments)
     }
 
-    if (tx === parent) {
+    if (tx === parentTx) {
       logger.debug('not creating nested transaction %s using transaction %s', url, tx.id)
-      return tracer.addSegment(url, null, null, true, handle)
+      return tracer.addSegment(url, null, parent, true, handle)
     }
 
     logger.debug(
@@ -987,10 +986,16 @@ API.prototype.startWebTransaction = function startWebTransaction(url, handle) {
     tx.nameState.setName(NAMES.CUSTOM, null, NAMES.ACTION_DELIMITER, url)
     tx.url = url
     tx.applyUserNamingRules(tx.url)
-    tx.baseSegment = tracer.createSegment(url, recordWeb)
+    tx.baseSegment = tracer.createSegment({
+      name: url,
+      recorder: recordWeb,
+      transaction: tx,
+      parent
+    })
+    const newContext = context.enterSegment({ transaction: tx, segment: tx.baseSegment })
     tx.baseSegment.start()
 
-    const boundHandle = tracer.bindFunction(handle, tx.baseSegment)
+    const boundHandle = tracer.bindFunction(handle, newContext)
     maybeAddCLMAttributes(handle, tx.baseSegment)
     let returnResult = boundHandle.call(this)
     if (returnResult && shim.isPromise(returnResult)) {
@@ -1016,9 +1021,9 @@ API.prototype.startBackgroundTransaction = startBackgroundTransaction
  *    will be ended when {@link TransactionHandle#end} is called in the user's code.
  *
  * @example
- * var newrelic = require('newrelic')
+ * const newrelic = require('newrelic')
  * newrelic.startBackgroundTransaction('Red October', 'Subs', function() {
- *   var transaction = newrelic.getTransaction()
+ *   const transaction = newrelic.getTransaction()
  *   setTimeout(function() {
  *     // do some work
  *     transaction.end()
@@ -1063,19 +1068,21 @@ function startBackgroundTransaction(name, group, handle) {
   const tracer = this.agent.tracer
   const shim = this.shim
   const txName = group + '/' + name
-  const parent = tracer.getTransaction()
+  const parentTx = tracer.getTransaction()
 
   assignCLMSymbol(shim, handle)
   return tracer.transactionNestProxy('bg', function startBackgroundSegment() {
-    const tx = tracer.getTransaction()
+    const context = tracer.getContext()
+    const tx = context?.transaction
+    const parent = context?.segment
 
     if (!tx) {
       return handle.apply(this, arguments)
     }
 
-    if (tx === parent) {
+    if (tx === parentTx) {
       logger.debug('not creating nested transaction %s using transaction %s', txName, tx.id)
-      return tracer.addSegment(txName, null, null, true, handle)
+      return tracer.addSegment(txName, null, parent, true, handle)
     }
 
     logger.debug(
@@ -1087,11 +1094,17 @@ function startBackgroundTransaction(name, group, handle) {
     )
 
     tx._partialName = txName
-    tx.baseSegment = tracer.createSegment(name, recordBackground)
+    tx.baseSegment = tracer.createSegment({
+      name,
+      recorder: recordBackground,
+      transaction: tx,
+      parent
+    })
+    const newContext = context.enterSegment({ transaction: tx, segment: tx.baseSegment })
     tx.baseSegment.partialName = group
     tx.baseSegment.start()
 
-    const boundHandle = tracer.bindFunction(handle, tx.baseSegment)
+    const boundHandle = tracer.bindFunction(handle, newContext)
     maybeAddCLMAttributes(handle, tx.baseSegment)
     let returnResult = boundHandle.call(this)
     if (returnResult && shim.isPromise(returnResult)) {
@@ -1303,6 +1316,7 @@ API.prototype.recordCustomEvent = function recordCustomEvent(eventType, attribut
   }
 
   const tx = this.agent.getTransaction()
+  // eslint-disable-next-line sonarjs/pseudo-random
   const priority = (tx && tx.priority) || Math.random()
   this.agent.customEventAggregator.add([intrinsics, filteredAttributes], priority)
 }
@@ -1328,9 +1342,9 @@ API.prototype.instrument = function instrument(moduleName, onRequire, onError) {
   let opts = moduleName
   if (typeof opts === 'string') {
     opts = {
-      moduleName: moduleName,
-      onRequire: onRequire,
-      onError: onError
+      moduleName,
+      onRequire,
+      onError
     }
   }
 
@@ -1393,9 +1407,9 @@ API.prototype.instrumentDatastore = function instrumentDatastore(moduleName, onR
   let opts = moduleName
   if (typeof opts === 'string') {
     opts = {
-      moduleName: moduleName,
-      onRequire: onRequire,
-      onError: onError
+      moduleName,
+      onRequire,
+      onError
     }
   }
 
@@ -1430,9 +1444,9 @@ API.prototype.instrumentWebframework = function instrumentWebframework(
   let opts = moduleName
   if (typeof opts === 'string') {
     opts = {
-      moduleName: moduleName,
-      onRequire: onRequire,
-      onError: onError
+      moduleName,
+      onRequire,
+      onError
     }
   }
 
@@ -1463,9 +1477,9 @@ API.prototype.instrumentMessages = function instrumentMessages(moduleName, onReq
   let opts = moduleName
   if (typeof opts === 'string') {
     opts = {
-      moduleName: moduleName,
-      onRequire: onRequire,
-      onError: onError
+      moduleName,
+      onRequire,
+      onError
     }
   }
 
@@ -1477,14 +1491,15 @@ API.prototype.instrumentMessages = function instrumentMessages(moduleName, onReq
  * Applies an instrumentation to an already loaded CommonJs module.
  *
  * Note: This function will not work for ESM packages.
+ * @example
  *
- *    // oh no, express was loaded before newrelic
- *    const express   = require('express')
- *    const newrelic  = require('newrelic')
+ * // oh no, express was loaded before newrelic
+ * const express   = require('express')
+ * const newrelic  = require('newrelic')
  *
- *    // phew, we can use instrumentLoadedModule to make
- *    // sure express is still instrumented
- *    newrelic.instrumentLoadedModule('express', express)
+ * // phew, we can use instrumentLoadedModule to make
+ * // sure express is still instrumented
+ * newrelic.instrumentLoadedModule('express', express)
  *
  * @param {string} moduleName
  *  The module's name/identifier.  Will be normalized
@@ -1521,17 +1536,24 @@ API.prototype.getTraceMetadata = function getTraceMetadata() {
     NAMES.SUPPORTABILITY.API + '/getTraceMetadata'
   )
   metric.incrementCallCount()
-
   const metadata = {}
 
-  const segment = this.agent.tracer.getSegment()
-  if (!segment) {
-    logger.debug('No transaction found when calling API#getTraceMetadata')
-  } else if (!this.agent.config.distributed_tracing.enabled) {
-    logger.debug('Distributed tracing disabled when calling API#getTraceMetadata')
-  } else {
-    metadata.traceId = segment.transaction.traceId
+  if (this.agent.config.distributed_tracing.enabled === false) {
+    return metadata
+  }
 
+  const transaction = this.agent.tracer.getTransaction()
+  if (!transaction) {
+    logger.debug('No transaction found when calling API#getTraceMetadata')
+  } else {
+    metadata.traceId = transaction.traceId
+  }
+
+  const segment = this.agent.tracer.getSegment()
+
+  if (!segment) {
+    logger.debug('No segment found when calling API#getTraceMetadata')
+  } else {
     const spanId = segment.getSpanId()
     if (spanId) {
       metadata.spanId = spanId
@@ -1900,6 +1922,57 @@ API.prototype.ignoreApdex = function ignoreApdex() {
   }
 
   transaction.ignoreApdex = true
+}
+
+/**
+ * Run a function with the passed in LLM context as the active context and return its return value.
+ *
+ * @example
+ * const OpenAI = require('openai')
+ * const client = new OpenAI()
+ * newrelic.withLlmCustomAttributes({'llm.someAttribute': 'someValue'}, async () => {
+ *    const response = await client.chat.completions.create({ messages: [
+ *      { role: 'user', content: 'Tell me about Node.js.'}
+ *    ]})
+ * })
+ * @param {Object} context LLM custom attributes context
+ * @param {Function} callback The function to execute in context.
+ */
+API.prototype.withLlmCustomAttributes = function withLlmCustomAttributes(context, callback) {
+  context = context || {}
+  const metric = this.agent.metrics.getOrCreateMetric(
+    NAMES.SUPPORTABILITY.API + '/withLlmCustomAttributes'
+  )
+  metric.incrementCallCount()
+
+  const transaction = this.agent.tracer.getTransaction()
+
+  if (!callback || typeof callback !== 'function') {
+    logger.warn('withLlmCustomAttributes must be used with a valid callback')
+    return
+  }
+
+  if (!transaction) {
+    logger.warn('withLlmCustomAttributes must be called within the scope of a transaction.')
+    return callback()
+  }
+
+  for (const [key, value] of Object.entries(context)) {
+    if (typeof value === 'object' || typeof value === 'function') {
+      logger.warn(`Invalid attribute type for ${key}. Skipped.`)
+      delete context[key]
+    } else if (key.indexOf('llm.') !== 0) {
+      logger.warn(`Invalid attribute name ${key}. Renamed to "llm.${key}".`)
+      delete context[key]
+      context[`llm.${key}`] = value
+    }
+  }
+
+  transaction._llmContextManager = transaction._llmContextManager || new AsyncLocalStorage()
+  const parentContext = transaction._llmContextManager.getStore() || {}
+
+  const fullContext = Object.assign({}, parentContext, context)
+  return transaction._llmContextManager.run(fullContext, callback)
 }
 
 module.exports = API

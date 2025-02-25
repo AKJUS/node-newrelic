@@ -6,13 +6,15 @@
   "tests": [
     {
       "engines": {
-        "node": ">=16"
+        "node": ">=18"
       },
       "dependencies": {
         "when": ">=3.7.0"
       },
       "files": [
-        "when.tap.js"
+        "segments.test.js",
+        "when.test.js",
+        "when2.test.js"
       ]
     }
   ]

@@ -5,11 +5,14 @@
 
 'use strict'
 
-const tap = require('tap')
+const test = require('node:test')
+const assert = require('node:assert')
 const LangChainCompletionSummary = require('../../../../lib/llm-events/langchain/chat-completion-summary')
 
-tap.beforeEach((t) => {
-  t.context._tx = {
+test.beforeEach((ctx) => {
+  ctx.nr = {}
+  ctx.nr.transaction = {
+    traceId: 'trace-1',
     trace: {
       custom: {
         get() {
@@ -21,7 +24,7 @@ tap.beforeEach((t) => {
     }
   }
 
-  t.context.agent = {
+  ctx.nr.agent = {
     config: {
       applications() {
         return ['test-app']
@@ -29,40 +32,35 @@ tap.beforeEach((t) => {
     },
     tracer: {
       getTransaction() {
-        return t.context._tx
+        return ctx.nr.transaction
       }
     }
   }
 
-  t.context.segment = {
+  ctx.nr.segment = {
     id: 'segment-1',
-    transaction: {
-      traceId: 'trace-1'
-    },
     getDurationInMillis() {
       return 42
     }
   }
 
-  t.context.runId = 'run-1'
-  t.context.metadata = { foo: 'foo' }
+  ctx.nr.runId = 'run-1'
+  ctx.nr.metadata = { foo: 'foo' }
 })
 
-tap.test('creates entity', async (t) => {
-  const msg = new LangChainCompletionSummary(t.context)
-  t.match(msg, {
-    id: /[a-z0-9-]{36}/,
-    appName: 'test-app',
-    ['llm.conversation_id']: 'test-conversation',
-    span_id: 'segment-1',
-    request_id: 'run-1',
-    trace_id: 'trace-1',
-    ['metadata.foo']: 'foo',
-    ingest_source: 'Node',
-    vendor: 'langchain',
-    virtual_llm: true,
-    tags: '',
-    duration: 42,
-    ['response.number_of_messages']: 0
-  })
+test('creates entity', async (t) => {
+  const msg = new LangChainCompletionSummary(t.nr)
+  assert.match(msg.id, /[a-z0-9-]{36}/)
+  assert.equal(msg.appName, 'test-app')
+  assert.equal(msg['llm.conversation_id'], 'test-conversation')
+  assert.equal(msg.span_id, 'segment-1')
+  assert.equal(msg.request_id, 'run-1')
+  assert.equal(msg.trace_id, 'trace-1')
+  assert.equal(msg['metadata.foo'], 'foo')
+  assert.equal(msg.ingest_source, 'Node')
+  assert.equal(msg.vendor, 'langchain')
+  assert.equal(msg.virtual_llm, true)
+  assert.equal(msg.tags, '')
+  assert.equal(msg.duration, 42)
+  assert.equal(msg['response.number_of_messages'], 0)
 })

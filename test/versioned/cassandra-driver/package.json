@@ -6,15 +6,14 @@
   "tests": [
     {
       "engines": {
-        "node": ">=16"
+        "node": ">=18"
       },
       "dependencies": {
         "cassandra-driver": ">=3.4.0"
       },
       "files": [
-        "query.tap.js"
+        "query.test.js"
       ]
     }
-  ],
-  "dependencies": {}
+  ]
 }

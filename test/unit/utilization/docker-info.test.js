@@ -5,26 +5,40 @@
 
 'use strict'
 
-const tap = require('tap')
-const fs = require('node:fs')
-const http = require('node:http')
-const os = require('node:os')
+const test = require('node:test')
+const assert = require('node:assert')
 const helper = require('../../lib/agent_helper')
-const standardResponse = require('./aws-ecs-api-response.json')
-const { getBootId } = require('../../../lib/utilization/docker-info')
+const { removeModules, removeMatchedModules } = require('../../lib/cache-buster')
 
-tap.beforeEach(async (t) => {
-  t.context.orig = {
+test.beforeEach(async (ctx) => {
+  ctx.nr = {}
+
+  const fs = require('fs')
+  const os = require('os')
+  ctx.nr.orig = {
     fs_access: fs.access,
+    fs_readFile: fs.readFile,
     os_platform: os.platform
   }
   fs.access = (file, mode, cb) => {
     cb(Error('no proc file'))
   }
   os.platform = () => 'linux'
+  ctx.nr.fs = fs
+  ctx.nr.os = os
 
-  t.context.agent = helper.loadMockedAgent()
-  t.context.agent.config.utilization = {
+  const utilCommon = require('../../../lib/utilization/common')
+  utilCommon.readProc = (path, cb) => {
+    cb(null, 'docker-1')
+  }
+  ctx.nr.utilCommon = utilCommon
+
+  const { getBootId, getVendorInfo } = require('../../../lib/utilization/docker-info')
+  ctx.nr.getBootId = getBootId
+  ctx.nr.getVendorInfo = getVendorInfo
+
+  ctx.nr.agent = helper.loadMockedAgent()
+  ctx.nr.agent.config.utilization = {
     detect_aws: true,
     detect_azure: true,
     detect_gcp: true,
@@ -33,158 +47,86 @@ tap.beforeEach(async (t) => {
     detect_pcf: true
   }
 
-  t.context.logs = []
-  t.context.logger = {
+  ctx.nr.logs = []
+  ctx.nr.logger = {
     debug(msg) {
-      t.context.logs.push(msg)
+      ctx.nr.logs.push(msg)
     }
   }
-
-  t.context.server = await getServer()
 })
 
-tap.afterEach((t) => {
-  fs.access = t.context.orig.fs_access
-  os.platform = t.context.orig.os_platform
-
-  t.context.server.close()
-
-  helper.unloadAgent(t.context.agent)
-
-  delete process.env.ECS_CONTAINER_METADATA_URI
-  delete process.env.ECS_CONTAINER_METADATA_URI_V4
+test.afterEach((ctx) => {
+  removeModules(['fs', 'os'])
+  removeMatchedModules(/docker-info/)
+  removeMatchedModules(/utilization\/commo/)
+  helper.unloadAgent(ctx.nr.agent)
 })
 
-async function getServer() {
-  const server = http.createServer((req, res) => {
-    res.writeHead(200, { 'content-type': 'application/json' })
+test('error if not on linux', (t, end) => {
+  const { agent, logger, getBootId, os } = t.nr
+  os.platform = () => false
+  getBootId(agent, callback, logger)
 
-    switch (req.url) {
-      case '/json-error': {
-        res.end(`{"invalid":"json"`)
-        break
-      }
+  function callback(error, data) {
+    assert.equal(error, null)
+    assert.equal(data, null)
+    assert.deepStrictEqual(t.nr.logs, ['Platform is not a flavor of linux, omitting boot info'])
+    end()
+  }
+})
 
-      case '/no-id': {
-        res.end(`{}`)
-        break
-      }
+test('error if no proc file', (t, end) => {
+  const { agent, logger, getBootId } = t.nr
+  getBootId(agent, callback, logger)
 
-      default: {
-        res.end(JSON.stringify(standardResponse))
-      }
+  function callback(error, data) {
+    assert.equal(error, null)
+    assert.equal(data, null)
+    assert.deepStrictEqual(t.nr.logs, ['Container boot id is not available in cgroups info'])
+    end()
+  }
+})
+
+test('data on success', (t, end) => {
+  const { agent, logger, getBootId, fs } = t.nr
+  fs.access = (file, mode, cb) => {
+    cb(null)
+  }
+
+  getBootId(agent, callback, logger)
+
+  function callback(error, data) {
+    assert.equal(error, null)
+    assert.equal(data, 'docker-1')
+    assert.deepStrictEqual(t.nr.logs, [])
+    end()
+  }
+})
+
+test('falls back to v1 correctly', (t, end) => {
+  const { agent, logger, getVendorInfo, utilCommon } = t.nr
+  let invocation = 0
+
+  utilCommon.readProc = (path, callback) => {
+    if (invocation === 0) {
+      invocation += 1
+      return callback(null, 'invalid cgroups v2 file')
     }
-  })
+    callback(null, '4:cpu:/docker/f37a7e4d17017e7bf774656b19ca4360c6cdc4951c86700a464101d0d9ce97ee')
+  }
 
-  await new Promise((resolve) => {
-    server.listen(0, '127.0.0.1', () => {
-      resolve()
+  getVendorInfo(agent, gotInfo, logger)
+
+  function gotInfo(error, info) {
+    assert.ifError(error)
+    assert.deepStrictEqual(info, {
+      id: 'f37a7e4d17017e7bf774656b19ca4360c6cdc4951c86700a464101d0d9ce97ee'
     })
-  })
-
-  return server
-}
-
-tap.test('skips if not in ecs container', (t) => {
-  const { agent, logs, logger } = t.context
-
-  function callback(err, data) {
-    t.error(err)
-    t.strictSame(logs, [
-      'Container boot id is not available in cgroups info',
-      'Container is not in a recognized ECS container, omitting boot info'
+    assert.deepStrictEqual(t.nr.logs, [
+      'Found /proc/self/mountinfo but failed to parse Docker container id.',
+      'Attempting to fall back to cgroups v1 parsing.',
+      'Found docker id from cgroups v1: f37a7e4d17017e7bf774656b19ca4360c6cdc4951c86700a464101d0d9ce97ee'
     ])
-    t.equal(data, null)
-    t.equal(
-      agent.metrics._metrics.unscoped['Supportability/utilization/boot_id/error']?.callCount,
-      1
-    )
-    t.end()
+    end()
   }
-
-  getBootId(agent, callback, logger)
-})
-
-tap.test('records request error', (t) => {
-  const { agent, logs, logger, server } = t.context
-  const info = server.address()
-  process.env.ECS_CONTAINER_METADATA_URI_V4 = `http://${info.address}:0`
-
-  function callback(err, data) {
-    t.error(err)
-    t.strictSame(logs, [
-      'Container boot id is not available in cgroups info',
-      `Failed to query ECS endpoint, omitting boot info`
-    ])
-    t.equal(data, null)
-    t.equal(
-      agent.metrics._metrics.unscoped['Supportability/utilization/boot_id/error']?.callCount,
-      1
-    )
-    t.end()
-  }
-
-  getBootId(agent, callback, logger)
-})
-
-tap.test('records json parsing error', (t) => {
-  const { agent, logs, logger, server } = t.context
-  const info = server.address()
-  process.env.ECS_CONTAINER_METADATA_URI_V4 = `http://${info.address}:${info.port}/json-error`
-
-  function callback(err, data) {
-    t.error(err)
-    t.match(logs, [
-      'Container boot id is not available in cgroups info',
-      // Node 16 has a different format for JSON parsing errors:
-      /Failed to process ECS API response, omitting boot info: (Expected|Unexpected)/
-    ])
-    t.equal(data, null)
-    t.equal(
-      agent.metrics._metrics.unscoped['Supportability/utilization/boot_id/error']?.callCount,
-      1
-    )
-    t.end()
-  }
-
-  getBootId(agent, callback, logger)
-})
-
-tap.test('records error for no id in response', (t) => {
-  const { agent, logs, logger, server } = t.context
-  const info = server.address()
-  process.env.ECS_CONTAINER_METADATA_URI_V4 = `http://${info.address}:${info.port}/no-id`
-
-  function callback(err, data) {
-    t.error(err)
-    t.strictSame(logs, [
-      'Container boot id is not available in cgroups info',
-      'Failed to find DockerId in response, omitting boot info'
-    ])
-    t.equal(data, null)
-    t.equal(
-      agent.metrics._metrics.unscoped['Supportability/utilization/boot_id/error']?.callCount,
-      1
-    )
-    t.end()
-  }
-
-  getBootId(agent, callback, logger)
-})
-
-tap.test('records found id', (t) => {
-  const { agent, logs, logger, server } = t.context
-  const info = server.address()
-  // Cover the non-V4 case:
-  process.env.ECS_CONTAINER_METADATA_URI = `http://${info.address}:${info.port}/success`
-
-  function callback(err, data) {
-    t.error(err)
-    t.strictSame(logs, ['Container boot id is not available in cgroups info'])
-    t.equal(data, '1e1698469422439ea356071e581e8545-2769485393')
-    t.notOk(agent.metrics._metrics.unscoped['Supportability/utilization/boot_id/error']?.callCount)
-    t.end()
-  }
-
-  getBootId(agent, callback, logger)
 })

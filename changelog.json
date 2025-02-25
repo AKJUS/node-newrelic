@@ -2,6 +2,328 @@
   "repository": "newrelic/node-newrelic",
   "entries": [
     {
+      "version": "12.14.0",
+      "changes": {
+        "security": [],
+        "bugfixes": [
+          "Fixed undici/fetch instrumentation to properly assign the parent-id portion of the `traceparent` header on outgoing requests to the active http external span id",
+          "Updated `api.recordLogEvent` to no longer truncate the message key in log event",
+          "Fixed queueing of logs from child loggers"
+        ],
+        "features": [
+          "Added attribute reconciliation for message producer spans",
+          "Added timeslice metrics for synthesized consumer segments",
+          "Added support for region-prefixed Bedrock models"
+        ]
+      }
+    },
+    {
+      "version": "12.13.0",
+      "changes": {
+        "security": [],
+        "bugfixes": [
+          "Fixed `api.getTraceMetadata` to handle when there is an active transaction but not active segment"
+        ],
+        "features": [
+          "Propagate agent root context when opentelemetry `ROOT_CONTEXT` is passed in to trace propagator.",
+          "Added timeslice metrics for synthesized producer segments",
+          "Added timeslice metrics for synthesized server segments",
+          "Added timeslice metrics for synthesized database segments",
+          "Provided ability to disable instrumentation for core Node.js libraries"
+        ]
+      }
+    },
+    {
+      "version": "12.12.0",
+      "changes": {
+        "security": [],
+        "bugfixes": [
+          "Updated default config to accept `undefined` as default value"
+        ],
+        "features": [
+          "Added health check support for upcoming feature",
+          "Added opentelemetry bridge instrumentation that adds a context manager, and processor to handle synthesizing segments and time slice metrics."
+        ]
+      }
+    },
+    {
+      "version": "12.11.3",
+      "changes": {
+        "security": [],
+        "bugfixes": [
+          "Fixed transaction-shim to properly create new transactions when the existing transaction is not active",
+          "Fixed issue with `bluebird` and `when` instrumentation where checking active context crashed when transaction prematurely ends"
+        ],
+        "features": []
+      }
+    },
+    {
+      "version": "12.11.2",
+      "changes": {
+        "security": [],
+        "bugfixes": [
+          "Added defensive code in shim to prevent crashing when checking parent segment"
+        ],
+        "features": [
+          "Added support for Claude 3+ Chat API in Bedrock"
+        ]
+      }
+    },
+    {
+      "version": "12.11.1",
+      "changes": {
+        "security": [],
+        "bugfixes": [
+          "Updated undici instrumentation to fix crash with trying to calculate exclusive duration on a segment that no longer exists"
+        ],
+        "features": []
+      }
+    },
+    {
+      "version": "12.11.0",
+      "changes": {
+        "security": [],
+        "bugfixes": [
+          "Updated `shim.createSegment` and `shim.handleMqTracingHeaders` to be backwards compatible with the changes to context manager"
+        ],
+        "features": [
+          "Added otel consumer span processing",
+          "Added segment synthesis for internal spans",
+          "Added segment synthesis for otel producer spans",
+          "Added segment and transaction synthesis for http server spans",
+          "Added segment synthesis for db client otel spans to db trace",
+          "Added segment synthesizer and provided ability to convert http client otel spans to external http trace segments",
+          "Added segment tree to transaction trace",
+          "Removed children from segments.",
+          "Removed transaction from segment. Introduced a new enterSegment and enterTransaction to make context propagation more clear"
+        ]
+      }
+    },
+    {
+      "version": "12.10.0",
+      "changes": {
+        "security": [],
+        "bugfixes": [
+          "Fixed event matcher to use properties specific to web requests (v1/ALB and v2)"
+        ],
+        "features": [
+          "Added instrumentation for `@opensearch-projects/opensearch` v2.1.0+"
+        ]
+      }
+    },
+    {
+      "version": "12.9.0",
+      "changes": {
+        "security": [],
+        "bugfixes": [],
+        "features": [
+          "Added entity linking attributes to aws-sdk v3 Lambda segments",
+          "Provided ability to define newrelic config as `newrelic.mjs`"
+        ]
+      }
+    },
+    {
+      "version": "12.8.2",
+      "changes": {
+        "security": [],
+        "bugfixes": [
+          "Fixed matching for Lambda events containing resource but which aren't API Gateway",
+          "Fixed `mysql2` promise instrumentation to properly handle `createPool` and `createPoolCluster`"
+        ],
+        "features": []
+      }
+    },
+    {
+      "version": "12.8.1",
+      "changes": {
+        "security": [],
+        "bugfixes": [
+          "Updated `mysql2` instrumentation to work with 3.11.5+",
+          "Fixed matching for ALB and API Gateway (v1 & v2) events for Lambda"
+        ],
+        "features": []
+      }
+    },
+    {
+      "version": "12.8.0",
+      "changes": {
+        "security": [],
+        "bugfixes": [
+          "Corrected expected shape of user input in get Prompt()"
+        ],
+        "features": [
+          "Added new configuration options to add custom tags (labels) to logs",
+          "Moved `entity.guid`, `entity.name`, `entity.type`, and `hostname` to `common.attributes` on logs payload instead of in every log message",
+          "Added support for Bedrock Claude 3.5 invoke model user request"
+        ]
+      }
+    },
+    {
+      "version": "12.7.0",
+      "changes": {
+        "security": [],
+        "bugfixes": [],
+        "features": [
+          "Added `cloud.resource_id` attribute to dynamo spans",
+          "Enhance Proxy Request Handling to Display Actual External URLs"
+        ]
+      }
+    },
+    {
+      "version": "12.6.1",
+      "changes": {
+        "security": [],
+        "bugfixes": [
+          "Fixed issue parsing docker container id"
+        ],
+        "features": [
+          "added `cloud.aws.account_id` to default config"
+        ]
+      }
+    },
+    {
+      "version": "12.6.0",
+      "changes": {
+        "security": [],
+        "bugfixes": [],
+        "features": [
+          "Added ARN and provider to Lambda segments",
+          "Added IAST configurations for scan scheduling and restrictions"
+        ]
+      }
+    },
+    {
+      "version": "12.5.2",
+      "changes": {
+        "security": [],
+        "bugfixes": [
+          "Fixed amqplib instrumentation via ESM"
+        ],
+        "features": [
+          "Updated shim/when instrumentation to use tracer to run in context"
+        ]
+      }
+    },
+    {
+      "version": "12.5.1",
+      "changes": {
+        "security": [],
+        "bugfixes": [
+          "Fixed handling of Pino merging object"
+        ],
+        "features": []
+      }
+    },
+    {
+      "version": "12.5.0",
+      "changes": {
+        "security": [],
+        "bugfixes": [
+          "Ensured README displays for Azure site extension"
+        ],
+        "features": [
+          "Added utilization info for ECS"
+        ]
+      }
+    },
+    {
+      "version": "12.4.0",
+      "changes": {
+        "security": [],
+        "bugfixes": [],
+        "features": [
+          "Provided ability to disable instrumentation for a 3rd party package",
+          "Added support for `express@5`"
+        ]
+      }
+    },
+    {
+      "version": "12.3.1",
+      "changes": {
+        "security": [],
+        "bugfixes": [
+          "Fixed detection of REST API type payloads in AWS Lambda"
+        ],
+        "features": []
+      }
+    },
+    {
+      "version": "12.3.0",
+      "changes": {
+        "security": [],
+        "bugfixes": [
+          "Improved AWS Lambda event detection"
+        ],
+        "features": [
+          "Added new API method `withLlmCustomAttributes` to run a function in a LLM context"
+        ]
+      }
+    },
+    {
+      "version": "12.2.0",
+      "changes": {
+        "security": [],
+        "bugfixes": [
+          "Updated `koa` instrumentation to properly get the matched route name and to handle changes in `@koa/router@13.0.0`"
+        ],
+        "features": [
+          "Added instrumentation support for Express 5 beta"
+        ]
+      }
+    },
+    {
+      "version": "12.1.1",
+      "changes": {
+        "security": [],
+        "bugfixes": [
+          "Updated `amqplib` instrumentation to properly parse host/port from connect",
+          "Updated `redis` instrumentation to parse host/port when a url is not provided",
+          "Updated the `kafkajs` node metrics to remove `/Named` from the name"
+        ],
+        "features": []
+      }
+    },
+    {
+      "version": "12.1.0",
+      "changes": {
+        "security": [],
+        "bugfixes": [
+          "Pick log message from merging object in Pino instrumentation",
+          "Added TLS verification for Redis"
+        ],
+        "features": []
+      }
+    },
+    {
+      "version": "12.0.0",
+      "changes": {
+        "security": [],
+        "bugfixes": [],
+        "features": [
+          "Added `server.address` to amqplib spans",
+          "Removed support for `redis` < 2.6.0",
+          "Removed legacy context manager",
+          "Removed instrumentation for `director`",
+          "Updated `mongodb` instrumentation to drop support for versions 2 and 3",
+          "Dropped support for Node.js 16",
+          "Migrated instrumentation for `next` into agent"
+        ]
+      }
+    },
+    {
+      "version": "11.23.2",
+      "changes": {
+        "security": [],
+        "bugfixes": [
+          "Updated aws-sdk v3 instrumentation to load custom middleware last to properly get the external http span to add `aws.*` attributes",
+          "Updated cassandra-driver instrumentation to properly trace promise based executions"
+        ],
+        "features": [
+          "Added support for `fs.glob` in Node 22+"
+        ]
+      }
+    },
+    {
       "version": "11.23.1",
       "changes": {
         "security": [],

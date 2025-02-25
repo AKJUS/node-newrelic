@@ -11,7 +11,7 @@
   "tests": [
     {
       "engines": {
-        "node": ">=16"
+        "node": ">=18"
       },
       "dependencies": {
         "koa": {
@@ -20,13 +20,13 @@
         }
       },
       "files": [
-        "koa.tap.js",
-        "code-level-metrics.tap.js"
+        "koa.test.js",
+        "code-level-metrics.test.js"
       ]
     },
     {
       "engines": {
-        "node": ">=16"
+        "node": ">=18"
       },
       "dependencies": {
         "koa": {
@@ -34,18 +34,18 @@
           "samples": 5
         },
         "koa-router": {
-          "versions": ">=7.1.0",
+          "versions": ">=11.0.2",
           "samples": 5
         }
       },
       "files": [
-        "koa-router.tap.js",
-        "code-level-metrics.tap.js"
+        "koa-router.test.js",
+        "code-level-metrics.test.js"
       ]
     },
     {
       "engines": {
-        "node": ">=16"
+        "node": ">=18"
       },
       "dependencies": {
         "koa": {
@@ -53,18 +53,18 @@
           "samples": 5
         },
         "@koa/router": {
-          "versions": ">=8.0.0",
+          "versions": ">=11.0.2",
           "samples": 5
         }
       },
       "files": [
-        "scoped-koa-router.tap.js",
-        "code-level-metrics.tap.js"
+        "scoped-koa-router.test.js",
+        "code-level-metrics.test.js"
       ]
     },
     {
       "engines": {
-        "node": ">=16"
+        "node": ">=18"
       },
       "dependencies": {
         "koa": {
@@ -77,9 +77,11 @@
         }
       },
       "files": [
-        "koa-route.tap.js"
+        "koa-route.test.js"
       ]
     }
   ],
-  "dependencies": {}
+  "engines": {
+    "node": ">=18"
+  }
 }

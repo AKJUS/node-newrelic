@@ -5,99 +5,34 @@
 
 'use strict'
 
-const tap = require('tap')
-const os = require('os')
-const rfdc = require('rfdc')()
+const test = require('node:test')
+const assert = require('node:assert')
+const os = require('node:os')
+
+const { tspl } = require('@matteo.collina/tspl')
 const helper = require('../../lib/agent_helper')
 const AwsLambda = require('../../../lib/serverless/aws-lambda')
 
-const ATTR_DEST = require('../../../lib/config/attribute-filter').DESTINATIONS
+const { DESTINATIONS: ATTR_DEST } = require('../../../lib/config/attribute-filter')
+const { httpApiGatewayV2Event: v2Event } = require('./fixtures')
 
-// https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html
-const v2Event = {
-  version: '2.0',
-  routeKey: '$default',
-  rawPath: '/my/path',
-  rawQueryString: 'parameter1=value1&parameter1=value2&parameter2=value',
-  cookies: ['cookie1', 'cookie2'],
-  headers: {
-    header1: 'value1',
-    header2: 'value1,value2',
-    accept: 'application/json'
-  },
-  queryStringParameters: {
-    parameter1: 'value1,value2',
-    parameter2: 'value',
-    name: 'me',
-    team: 'node agent'
-  },
-  requestContext: {
-    accountId: '123456789012',
-    apiId: 'api-id',
-    authentication: {
-      clientCert: {
-        clientCertPem: 'CERT_CONTENT',
-        subjectDN: 'www.example.com',
-        issuerDN: 'Example issuer',
-        serialNumber: 'a1:a1:a1:a1:a1:a1:a1:a1:a1:a1:a1:a1:a1:a1:a1:a1',
-        validity: {
-          notBefore: 'May 28 12:30:02 2019 GMT',
-          notAfter: 'Aug  5 09:36:04 2021 GMT'
-        }
-      }
-    },
-    authorizer: {
-      jwt: {
-        claims: {
-          claim1: 'value1',
-          claim2: 'value2'
-        },
-        scopes: ['scope1', 'scope2']
-      }
-    },
-    domainName: 'id.execute-api.us-east-1.amazonaws.com',
-    domainPrefix: 'id',
-    http: {
-      method: 'POST',
-      path: '/my/path',
-      protocol: 'HTTP/1.1',
-      sourceIp: '192.0.2.1',
-      userAgent: 'agent'
-    },
-    requestId: 'id',
-    routeKey: '$default',
-    stage: '$default',
-    time: '12/Mar/2020:19:03:58 +0000',
-    timeEpoch: 1583348638390
-  },
-  body: 'Hello from Lambda',
-  pathParameters: {
-    parameter1: 'value1'
-  },
-  isBase64Encoded: false,
-  stageVariables: {
-    stageVariable1: 'value1',
-    stageVariable2: 'value2'
-  }
-}
-
-tap.beforeEach((t) => {
+test.beforeEach((ctx) => {
   // This env var suppresses console output we don't need to inspect.
   process.env.NEWRELIC_PIPE_PATH = os.devNull
 
-  t.context.agent = helper.loadMockedAgent({
+  ctx.nr = {}
+  ctx.nr.agent = helper.loadMockedAgent({
     allow_all_headers: true,
     serverless_mode: {
       enabled: true
     }
   })
 
-  t.context.lambda = new AwsLambda(t.context.agent)
-  t.context.lambda._resetModuleState()
+  ctx.nr.lambda = new AwsLambda(ctx.nr.agent)
+  ctx.nr.lambda._resetModuleState()
 
-  // structuredClone is not available in Node 16 ☹️
-  t.context.event = rfdc(v2Event)
-  t.context.functionContext = {
+  ctx.nr.event = structuredClone(v2Event)
+  ctx.nr.functionContext = {
     done() {},
     succeed() {},
     fail() {},
@@ -107,39 +42,38 @@ tap.beforeEach((t) => {
     memoryLimitInMB: '128',
     awsRequestId: 'testId'
   }
-  t.context.responseBody = {
+  ctx.nr.responseBody = {
     isBase64Encoded: false,
     statusCode: 200,
     headers: { responseHeader: 'headerValue' },
     body: 'worked'
   }
 
-  t.context.agent.setState('started')
+  ctx.nr.agent.setState('started')
 })
 
-tap.afterEach((t) => {
-  helper.unloadAgent(t.context.agent)
+test.afterEach((ctx) => {
+  helper.unloadAgent(ctx.nr.agent)
 })
 
-tap.test('should pick up the arn', async (t) => {
-  const { agent, lambda, event, functionContext } = t.context
-  t.equal(agent.collector.metadata.arn, null)
+test('should pick up the arn', async (t) => {
+  const { agent, lambda, event, functionContext } = t.nr
+  assert.equal(agent.collector.metadata.arn, null)
   lambda.patchLambdaHandler(() => {})(event, functionContext, () => {})
-  t.equal(agent.collector.metadata.arn, functionContext.invokedFunctionArn)
+  assert.equal(agent.collector.metadata.arn, functionContext.invokedFunctionArn)
 })
 
-tap.test('should create a web transaction', (t) => {
-  t.plan(8)
-
-  const { agent, lambda, event, functionContext, responseBody } = t.context
+test('should create a web transaction', async (t) => {
+  const plan = tspl(t, { plan: 8 })
+  const { agent, lambda, event, functionContext, responseBody } = t.nr
   agent.on('transactionFinished', verifyAttributes)
 
   const wrappedHandler = lambda.patchLambdaHandler((event, context, callback) => {
     const tx = agent.tracer.getTransaction()
-    t.ok(tx)
-    t.equal(tx.type, 'web')
-    t.equal(tx.getFullName(), 'WebTransaction/Function/testFunction')
-    t.equal(tx.isActive(), true)
+    plan.ok(tx)
+    plan.equal(tx.type, 'web')
+    plan.equal(tx.getFullName(), 'WebTransaction/Function/testFunction')
+    plan.equal(tx.isActive(), true)
 
     callback(null, responseBody)
   })
@@ -151,25 +85,20 @@ tap.test('should create a web transaction', (t) => {
     const segment = tx.baseSegment
     const spanAttributes = segment.attributes.get(ATTR_DEST.SPAN_EVENT)
 
-    t.equal(agentAttributes['request.method'], 'POST')
-    t.equal(agentAttributes['request.uri'], '/my/path')
-    t.equal(spanAttributes['request.method'], 'POST')
-    t.equal(spanAttributes['request.uri'], '/my/path')
-
-    t.end()
+    plan.equal(agentAttributes['request.method'], 'POST')
+    plan.equal(agentAttributes['request.uri'], '/my/path')
+    plan.equal(spanAttributes['request.method'], 'POST')
+    plan.equal(spanAttributes['request.uri'], '/my/path')
   }
+  await plan.completed
 })
 
-tap.test('should set w3c tracecontext on transaction if present on request header', (t) => {
-  t.plan(2)
+test('should set w3c tracecontext on transaction if present on request header', async (t) => {
+  const plan = tspl(t, { plan: 2 })
 
   const expectedTraceId = '4bf92f3577b34da6a3ce929d0e0e4736'
   const traceparent = `00-${expectedTraceId}-00f067aa0ba902b7-00`
-  const { agent, lambda, event, functionContext, responseBody } = t.context
-  agent.on('transactionFinished', () => {
-    t.end()
-  })
-
+  const { agent, lambda, event, functionContext, responseBody } = t.nr
   agent.config.distributed_tracing.enabled = true
   event.headers.traceparent = traceparent
 
@@ -182,22 +111,20 @@ tap.test('should set w3c tracecontext on transaction if present on request heade
     const traceParentFields = headers.traceparent.split('-')
     const [version, traceId] = traceParentFields
 
-    t.equal(version, '00')
-    t.equal(traceId, expectedTraceId)
+    plan.equal(version, '00')
+    plan.equal(traceId, expectedTraceId)
 
     callback(null, responseBody)
   })
 
   wrappedHandler(event, functionContext, () => {})
+  await plan.completed
 })
 
-tap.test('should add w3c tracecontext to transaction if not present on request header', (t) => {
-  t.plan(2)
+test('should add w3c tracecontext to transaction if not present on request header', async (t) => {
+  const plan = tspl(t, { plan: 2 })
 
-  const { agent, lambda, event, functionContext, responseBody } = t.context
-  agent.on('transactionFinished', () => {
-    t.end()
-  })
+  const { agent, lambda, event, functionContext, responseBody } = t.nr
 
   agent.config.account_id = 'AccountId1'
   agent.config.primary_application_id = 'AppId1'
@@ -210,19 +137,20 @@ tap.test('should add w3c tracecontext to transaction if not present on request h
     const headers = {}
     tx.insertDistributedTraceHeaders(headers)
 
-    t.match(headers.traceparent, /00-[a-f0-9]{32}-[a-f0-9]{16}-\d{2}/)
-    t.match(headers.tracestate, /33@nr=.+AccountId1-AppId1.+/)
+    plan.match(headers.traceparent, /00-[a-f0-9]{32}-[a-f0-9]{16}-\d{2}/)
+    plan.match(headers.tracestate, /33@nr=.+AccountId1-AppId1.+/)
 
     callback(null, responseBody)
   })
 
   wrappedHandler(event, functionContext, () => {})
+  await plan.completed
 })
 
-tap.test('should capture request parameters', (t) => {
-  t.plan(5)
+test('should capture request parameters', async (t) => {
+  const plan = tspl(t, { plan: 5 })
 
-  const { agent, lambda, event, functionContext, responseBody } = t.context
+  const { agent, lambda, event, functionContext, responseBody } = t.nr
   agent.on('transactionFinished', verifyAttributes)
 
   agent.config.attributes.enabled = true
@@ -239,23 +167,22 @@ tap.test('should capture request parameters', (t) => {
 
   function verifyAttributes(tx) {
     const agentAttributes = tx.trace.attributes.get(ATTR_DEST.TRANS_EVENT)
-    t.equal(agentAttributes['request.parameters.name'], 'me')
-    t.equal(agentAttributes['request.parameters.team'], 'node agent')
+    plan.equal(agentAttributes['request.parameters.name'], 'me')
+    plan.equal(agentAttributes['request.parameters.team'], 'node agent')
 
     const spanAttributes = tx.baseSegment.attributes.get(ATTR_DEST.SPAN_EVENT)
-    t.equal(spanAttributes['request.parameters.name'], 'me')
-    t.equal(spanAttributes['request.parameters.team'], 'node agent')
+    plan.equal(spanAttributes['request.parameters.name'], 'me')
+    plan.equal(spanAttributes['request.parameters.team'], 'node agent')
 
-    t.equal(agentAttributes['request.parameters.parameter1'], 'value1,value2')
-
-    t.end()
+    plan.equal(agentAttributes['request.parameters.parameter1'], 'value1,value2')
   }
+  await plan.completed
 })
 
-tap.test('should capture request headers', (t) => {
-  t.plan(2)
+test('should capture request headers', async (t) => {
+  const plan = tspl(t, { plan: 2 })
 
-  const { agent, lambda, event, functionContext, responseBody } = t.context
+  const { agent, lambda, event, functionContext, responseBody } = t.nr
   agent.on('transactionFinished', verifyAttributes)
 
   const wrappedHandler = lambda.patchLambdaHandler((event, context, callback) => {
@@ -266,23 +193,21 @@ tap.test('should capture request headers', (t) => {
   function verifyAttributes(tx) {
     const attrs = tx.trace.attributes.get(ATTR_DEST.TRANS_EVENT)
 
-    t.equal(attrs['request.headers.accept'], 'application/json')
-    t.equal(attrs['request.headers.header2'], 'value1,value2')
-
-    t.end()
+    plan.equal(attrs['request.headers.accept'], 'application/json')
+    plan.equal(attrs['request.headers.header2'], 'value1,value2')
   }
+  await plan.completed
 })
 
-tap.test('should not crash when headers are non-existent', (t) => {
-  const { lambda, event, functionContext, responseBody } = t.context
+test('should not crash when headers are non-existent', (t) => {
+  const { lambda, event, functionContext, responseBody } = t.nr
   delete event.headers
 
   const wrappedHandler = lambda.patchLambdaHandler((event, context, callback) => {
     callback(null, responseBody)
   })
 
-  t.doesNotThrow(() => {
+  assert.doesNotThrow(() => {
     wrappedHandler(event, functionContext, () => {})
   })
-  t.end()
 })

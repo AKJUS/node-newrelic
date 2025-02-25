@@ -5,6 +5,8 @@
 
 'use strict'
 
+const HealthReporter = require('./lib/health-reporter')
+
 // Record opening times before loading any other files.
 const preAgentTime = process.uptime()
 const agentStart = Date.now()
@@ -17,7 +19,6 @@ const featureFlags = require('./lib/feature_flags').prerelease
 const psemver = require('./lib/util/process-version')
 let logger = require('./lib/logger') // Gets re-loaded after initialization.
 const NAMES = require('./lib/metrics/names')
-const isESMSupported = psemver.satisfies('>=16.2.0')
 
 const pkgJSON = require('./package.json')
 logger.info(
@@ -109,10 +110,8 @@ function initialize() {
     message = 'New Relic for Node.js was unable to bootstrap itself due to an error:'
     logger.error(error, message)
 
-    /* eslint-disable no-console */
     console.error(message)
     console.error(error.stack)
-    /* eslint-enable no-console */
   }
 
   const api = agent ? initApi({ agent, apiPath: 'api' }) : initApi({ apiPath: 'stub_api' })
@@ -157,6 +156,7 @@ function createAgent(config) {
       'New Relic requires that you name this application!\n' +
       'Set app_name in your newrelic.js or newrelic.cjs file or set environment variable\n' +
       'NEW_RELIC_APP_NAME. Not starting!'
+    agent.healthReporter.setStatus(HealthReporter.STATUS_MISSING_APP_NAME)
     throw new Error(message)
   }
 
@@ -170,13 +170,12 @@ function createAgent(config) {
 
   agent.start(function afterStart(error) {
     if (error) {
+      agent.healthReporter.setStatus(HealthReporter.STATUS_INTERNAL_UNEXPECTED_ERROR)
       const errorMessage = 'New Relic for Node.js halted startup due to an error:'
       logger.error(error, errorMessage)
 
-      /* eslint-disable no-console */
       console.error(errorMessage)
       console.error(error.stack)
-      /* eslint-enable no-console */
 
       return
     }
@@ -246,15 +245,7 @@ function recordLoaderMetric(agent) {
       (arg === '--loader' || arg === '--experimental-loader') &&
       process.execArgv[index + 1] === 'newrelic/esm-loader.mjs'
     ) {
-      if (isESMSupported) {
-        agent.metrics.getOrCreateMetric(NAMES.FEATURES.ESM.LOADER).incrementCallCount()
-      } else {
-        agent.metrics.getOrCreateMetric(NAMES.FEATURES.ESM.UNSUPPORTED_LOADER)
-        logger.warn(
-          'New Relic for Node.js ESM loader requires a version of Node >= v16.12.0; your version is %s.  Instrumentation will not be registered.',
-          process.version
-        )
-      }
+      agent.metrics.getOrCreateMetric(NAMES.FEATURES.ESM.LOADER).incrementCallCount()
     }
   })
 

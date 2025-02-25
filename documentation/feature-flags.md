@@ -20,12 +20,6 @@ Any prerelease flags can be enabled or disabled in your agent config by adding a
 * Environment Variable: `NEW_RELIC_FEATURE_FLAG_REVERSE_NAMING_RULES`
 * Description: Naming rules are in forward order by default.  
 
-#### undici_async_tracking
-* Enabled by default: `true`
-* Configuration: `{ feature_flag: { undici_async_tracking: true|false }}`
-* Environment Variable: `NEW_RELIC_FEATURE_FLAG_UNDICI_ASYNC_TRACKING`
-* Description: If you have multiple undici requests being made in parallel, you may find some state issues if requests to an app are made with keep-alive. If so, *disabling* this flag will avoid these state issues, though at the cost of some broken segment nesting.
-
 #### unresolved_promise_cleanup
 * Enabled by default: `true`
 * Configuration: `{ feature_flag: { unresolved_promise_cleanup: true|false }}`
@@ -33,14 +27,21 @@ Any prerelease flags can be enabled or disabled in your agent config by adding a
 * Description: Now that `new_promise_tracking` is the default async context tracking behavior in the agent, `unresolved_promise_cleanup` is enabled by default. Disabling it can help with performance of agent when an application creates many promises. 
 * **WARNING**: If you set `unresolved_promise_cleanup` to `false`, failure to resolve all promises in your application will result in memory leaks even if those promises are garbage collected.
 
-#### legacy_context_manager
-* Enabled by default: `false`
-* Configuration: `{ feature_flag: { legacy_context_manager: true|false }}`
-* Environment Variable: `NEW_RELIC_FEATURE_FLAG_LEGACY_CONTEXT_MANAGER`
-* Description: The legacy context manager was replaced by AsyncLocalContextManager for async context propagation. If your application is not recording certain spans or creating orphaned data, you may want to enable this older context manager. Enabling this feature flag may increase the agent's use of memory and CPU.
-
 #### kakfajs_instrumentation
 * Enabled by default: `false`
 * Configuration: `{ feature_flag: { kafkajs_instrumentation: true|false }}`
 * Environment Variable: `NEW_RELIC_FEATURE_FLAG_KAFKAJS_INSTRUMENTATION`
 * Description: Enables instrumentation of `kafkajs`. 
+
+#### otel_instrumentation
+* Enabled by default: `false`
+* Configuration: `{ feature_flag: { otel_instrumentation: true|false }}`
+* Environment Variable: `NEW_RELIC_FEATURE_FLAG_OTEL_INSTRUMENTATION`
+* Description: Enables the creation of Transaction Trace segments and time slices metrics from opentelemetry spans. This will help drive New Relic UI experience for opentelemetry spans. 
+* **WARNING**: This is not feature complete and is not intended to be enabled yet.
+
+#### undici_error_tracking
+* Enabled by default: `true`
+* Configuration: `{ feature_flag: { undici_error_tracking: true|false }}`
+* Environment Variable: `NEW_RELIC_FEATURE_FLAG_UNDICI_ERROR_TRACKING`
+* Description: Enables the creation of errors when a request with undici fails. To disable tracking errors with undici, set the value to `false`.

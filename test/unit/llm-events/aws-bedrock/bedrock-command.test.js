@@ -5,7 +5,8 @@
 
 'use strict'
 
-const tap = require('tap')
+const test = require('node:test')
+const assert = require('node:assert')
 const structuredClone = require('./clone')
 const BedrockCommand = require('../../../../lib/llm-events/aws-bedrock/bedrock-command')
 
@@ -23,10 +24,45 @@ const claude = {
   }
 }
 
+const regionClaude = {
+  modelId: 'us.anthropic.claude-v1',
+  body: {
+    prompt: '\n\nHuman: yes\n\nAssistant:'
+  }
+}
+
+const claude35 = {
+  modelId: 'anthropic.claude-3-5-sonnet-20240620-v1:0',
+  body: {
+    messages: [
+      { role: 'user', content: [{ type: 'text', text: 'who are' }] },
+      { role: 'assistant', content: [{ type: 'text', text: 'researching' }] },
+      { role: 'user', content: [{ type: 'text', text: 'you' }] }
+    ]
+  }
+}
+
+const regionClaude35 = {
+  modelId: 'us.anthropic.claude-3-5-sonnet-20240620-v1:0',
+  body: {
+    messages: [
+      { role: 'user', content: [{ type: 'text', text: 'who are' }] },
+      { role: 'assistant', content: [{ type: 'text', text: 'researching' }] },
+      { role: 'user', content: [{ type: 'text', text: 'you' }] }
+    ]
+  }
+}
 const claude3 = {
   modelId: 'anthropic.claude-3-haiku-20240307-v1:0',
   body: {
-    messages: [{ content: 'who are you' }]
+    messages: [{ role: 'user', content: 'who are you' }]
+  }
+}
+
+const regionClaude3 = {
+  modelId: 'us.anthropic.claude-3-haiku-20240307-v1:0',
+  body: {
+    messages: [{ role: 'user', content: 'who are you' }]
   }
 }
 
@@ -73,19 +109,20 @@ const titanEmbed = {
   }
 }
 
-tap.beforeEach((t) => {
-  t.context.input = {
+test.beforeEach((ctx) => {
+  ctx.nr = {}
+  ctx.nr.input = {
     body: JSON.stringify('{"foo":"foo"}')
   }
 
-  t.context.updatePayload = (payload) => {
-    t.context.input.modelId = payload.modelId
-    t.context.input.body = JSON.stringify(payload.body)
+  ctx.nr.updatePayload = (payload) => {
+    ctx.nr.input.modelId = payload.modelId
+    ctx.nr.input.body = JSON.stringify(payload.body)
   }
 })
 
-tap.test('non-conforming command is handled gracefully', async (t) => {
-  const cmd = new BedrockCommand(t.context.input)
+test('non-conforming command is handled gracefully', async (t) => {
+  const cmd = new BedrockCommand(t.nr.input)
   for (const model of [
     'Ai21',
     'Claude',
@@ -96,210 +133,383 @@ tap.test('non-conforming command is handled gracefully', async (t) => {
     'Titan',
     'TitanEmbed'
   ]) {
-    t.equal(cmd[`is${model}`](), false)
+    assert.equal(cmd[`is${model}`](), false)
   }
-  t.equal(cmd.maxTokens, undefined)
-  t.equal(cmd.modelId, '')
-  t.equal(cmd.modelType, 'completion')
-  t.equal(cmd.prompt, undefined)
-  t.equal(cmd.temperature, undefined)
+  assert.equal(cmd.maxTokens, undefined)
+  assert.equal(cmd.modelId, '')
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, [])
+  assert.equal(cmd.temperature, undefined)
 })
 
-tap.test('ai21 minimal command works', async (t) => {
-  t.context.updatePayload(structuredClone(ai21))
-  const cmd = new BedrockCommand(t.context.input)
-  t.equal(cmd.isAi21(), true)
-  t.equal(cmd.maxTokens, undefined)
-  t.equal(cmd.modelId, ai21.modelId)
-  t.equal(cmd.modelType, 'completion')
-  t.equal(cmd.prompt, ai21.body.prompt)
-  t.equal(cmd.temperature, undefined)
+test('ai21 minimal command works', async (t) => {
+  t.nr.updatePayload(structuredClone(ai21))
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isAi21(), true)
+  assert.equal(cmd.maxTokens, undefined)
+  assert.equal(cmd.modelId, ai21.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, [{ role: 'user', content: ai21.body.prompt }])
+  assert.equal(cmd.temperature, undefined)
 })
 
-tap.test('ai21 complete command works', async (t) => {
+test('ai21 complete command works', async (t) => {
   const payload = structuredClone(ai21)
   payload.body.maxTokens = 25
   payload.body.temperature = 0.5
-  t.context.updatePayload(payload)
-  const cmd = new BedrockCommand(t.context.input)
-  t.equal(cmd.isAi21(), true)
-  t.equal(cmd.maxTokens, 25)
-  t.equal(cmd.modelId, payload.modelId)
-  t.equal(cmd.modelType, 'completion')
-  t.equal(cmd.prompt, payload.body.prompt)
-  t.equal(cmd.temperature, payload.body.temperature)
+  t.nr.updatePayload(payload)
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isAi21(), true)
+  assert.equal(cmd.maxTokens, 25)
+  assert.equal(cmd.modelId, payload.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, [{ role: 'user', content: payload.body.prompt }])
+  assert.equal(cmd.temperature, payload.body.temperature)
 })
 
-tap.test('claude minimal command works', async (t) => {
-  t.context.updatePayload(structuredClone(claude))
-  const cmd = new BedrockCommand(t.context.input)
-  t.equal(cmd.isClaude(), true)
-  t.equal(cmd.maxTokens, undefined)
-  t.equal(cmd.modelId, claude.modelId)
-  t.equal(cmd.modelType, 'completion')
-  t.equal(cmd.prompt, claude.body.prompt)
-  t.equal(cmd.temperature, undefined)
+test('claude minimal command works', async (t) => {
+  t.nr.updatePayload(structuredClone(claude))
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isClaude(), true)
+  assert.equal(cmd.maxTokens, undefined)
+  assert.equal(cmd.modelId, claude.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, [{ role: 'user', content: claude.body.prompt }])
+  assert.equal(cmd.temperature, undefined)
 })
 
-tap.test('claude complete command works', async (t) => {
+test('region specific claude minimal command works', async (t) => {
+  t.nr.updatePayload(structuredClone(regionClaude))
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isClaude(), true)
+  assert.equal(cmd.maxTokens, undefined)
+  assert.equal(cmd.modelId, regionClaude.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, [{ role: 'user', content: claude.body.prompt }])
+  assert.equal(cmd.temperature, undefined)
+})
+
+test('claude complete command works', async (t) => {
   const payload = structuredClone(claude)
   payload.body.max_tokens_to_sample = 25
   payload.body.temperature = 0.5
-  t.context.updatePayload(payload)
-  const cmd = new BedrockCommand(t.context.input)
-  t.equal(cmd.isClaude(), true)
-  t.equal(cmd.maxTokens, 25)
-  t.equal(cmd.modelId, payload.modelId)
-  t.equal(cmd.modelType, 'completion')
-  t.equal(cmd.prompt, payload.body.prompt)
-  t.equal(cmd.temperature, payload.body.temperature)
+  t.nr.updatePayload(payload)
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isClaude(), true)
+  assert.equal(cmd.maxTokens, 25)
+  assert.equal(cmd.modelId, payload.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, [{ role: 'user', content: payload.body.prompt }])
+  assert.equal(cmd.temperature, payload.body.temperature)
 })
 
-tap.test('claude3 minimal command works', async (t) => {
-  t.context.updatePayload(structuredClone(claude3))
-  const cmd = new BedrockCommand(t.context.input)
-  t.equal(cmd.isClaude3(), true)
-  t.equal(cmd.maxTokens, undefined)
-  t.equal(cmd.modelId, claude3.modelId)
-  t.equal(cmd.modelType, 'completion')
-  t.equal(cmd.prompt, claude3.body.messages[0].content)
-  t.equal(cmd.temperature, undefined)
+test('region specific claude complete command works', async (t) => {
+  const payload = structuredClone(regionClaude)
+  payload.body.max_tokens_to_sample = 25
+  payload.body.temperature = 0.5
+  t.nr.updatePayload(payload)
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isClaude(), true)
+  assert.equal(cmd.maxTokens, 25)
+  assert.equal(cmd.modelId, payload.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, [{ role: 'user', content: payload.body.prompt }])
+  assert.equal(cmd.temperature, payload.body.temperature)
 })
 
-tap.test('claude3 complete command works', async (t) => {
+test('claude3 minimal command works', async (t) => {
+  t.nr.updatePayload(structuredClone(claude3))
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isClaude3(), true)
+  assert.equal(cmd.maxTokens, undefined)
+  assert.equal(cmd.modelId, claude3.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, claude3.body.messages)
+  assert.equal(cmd.temperature, undefined)
+})
+
+test('region specific claude3 minimal command works', async (t) => {
+  t.nr.updatePayload(structuredClone(regionClaude3))
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isClaude3(), true)
+  assert.equal(cmd.maxTokens, undefined)
+  assert.equal(cmd.modelId, regionClaude3.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, claude3.body.messages)
+  assert.equal(cmd.temperature, undefined)
+})
+
+test('claude3 complete command works', async (t) => {
   const payload = structuredClone(claude3)
   payload.body.max_tokens = 25
   payload.body.temperature = 0.5
-  t.context.updatePayload(payload)
-  const cmd = new BedrockCommand(t.context.input)
-  t.equal(cmd.isClaude3(), true)
-  t.equal(cmd.maxTokens, 25)
-  t.equal(cmd.modelId, payload.modelId)
-  t.equal(cmd.modelType, 'completion')
-  t.equal(cmd.prompt, payload.body.messages[0].content)
-  t.equal(cmd.temperature, payload.body.temperature)
+  t.nr.updatePayload(payload)
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isClaude3(), true)
+  assert.equal(cmd.maxTokens, 25)
+  assert.equal(cmd.modelId, payload.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, payload.body.messages)
+  assert.equal(cmd.temperature, payload.body.temperature)
 })
 
-tap.test('cohere minimal command works', async (t) => {
-  t.context.updatePayload(structuredClone(cohere))
-  const cmd = new BedrockCommand(t.context.input)
-  t.equal(cmd.isCohere(), true)
-  t.equal(cmd.maxTokens, undefined)
-  t.equal(cmd.modelId, cohere.modelId)
-  t.equal(cmd.modelType, 'completion')
-  t.equal(cmd.prompt, cohere.body.prompt)
-  t.equal(cmd.temperature, undefined)
+test('region specific claude3 complete command works', async (t) => {
+  const payload = structuredClone(regionClaude3)
+  payload.body.max_tokens = 25
+  payload.body.temperature = 0.5
+  t.nr.updatePayload(payload)
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isClaude3(), true)
+  assert.equal(cmd.maxTokens, 25)
+  assert.equal(cmd.modelId, payload.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, payload.body.messages)
+  assert.equal(cmd.temperature, payload.body.temperature)
 })
 
-tap.test('cohere complete command works', async (t) => {
+test('claude35 minimal command works with claude 3 api', async (t) => {
+  t.nr.updatePayload(structuredClone(claude3))
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isClaude3(), true)
+  assert.equal(cmd.maxTokens, undefined)
+  assert.equal(cmd.modelId, claude3.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, claude3.body.messages)
+  assert.equal(cmd.temperature, undefined)
+})
+
+test('claude35 malformed payload produces reasonable values', async (t) => {
+  const malformedPayload = structuredClone(claude35)
+  malformedPayload.body = {}
+  t.nr.updatePayload(malformedPayload)
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isClaude3(), true)
+  assert.equal(cmd.maxTokens, undefined)
+  assert.equal(cmd.modelId, claude35.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, [])
+  assert.equal(cmd.temperature, undefined)
+})
+
+test('region specific claude35 malformed payload produces reasonable values', async (t) => {
+  const malformedPayload = structuredClone(regionClaude35)
+  malformedPayload.body = {}
+  t.nr.updatePayload(malformedPayload)
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isClaude3(), true)
+  assert.equal(cmd.maxTokens, undefined)
+  assert.equal(cmd.modelId, regionClaude35.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, [])
+  assert.equal(cmd.temperature, undefined)
+})
+
+test('claude35 skips a message that is null in `body.messages`', async (t) => {
+  const malformedPayload = structuredClone(claude35)
+  malformedPayload.body.messages = [{ role: 'user', content: 'who are you' }, null]
+  t.nr.updatePayload(malformedPayload)
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isClaude3(), true)
+  assert.deepEqual(cmd.prompt, [{ role: 'user', content: 'who are you' }])
+})
+
+test('region specific claude35 skips a message that is null in `body.messages`', async (t) => {
+  const malformedPayload = structuredClone(regionClaude35)
+  malformedPayload.body.messages = [{ role: 'user', content: 'who are you' }, null]
+  t.nr.updatePayload(malformedPayload)
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isClaude3(), true)
+  assert.deepEqual(cmd.prompt, [{ role: 'user', content: 'who are you' }])
+})
+
+test('claude35 handles defaulting prompt to empty array when `body.messages` is null', async (t) => {
+  const malformedPayload = structuredClone(claude35)
+  malformedPayload.body.messages = null
+  t.nr.updatePayload(malformedPayload)
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isClaude3(), true)
+  assert.deepEqual(cmd.prompt, [])
+})
+
+test('region specific claude35 handles defaulting prompt to empty array when `body.messages` is null', async (t) => {
+  const malformedPayload = structuredClone(regionClaude35)
+  malformedPayload.body.messages = null
+  t.nr.updatePayload(malformedPayload)
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isClaude3(), true)
+  assert.deepEqual(cmd.prompt, [])
+})
+
+test('claude35 minimal command works', async (t) => {
+  t.nr.updatePayload(structuredClone(claude35))
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isClaude3(), true)
+  assert.equal(cmd.maxTokens, undefined)
+  assert.equal(cmd.modelId, claude35.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, [{ role: 'user', content: 'who are' }, { role: 'assistant', content: 'researching' }, { role: 'user', content: 'you' }])
+  assert.equal(cmd.temperature, undefined)
+})
+
+test('region specific claude35 minimal command works', async (t) => {
+  t.nr.updatePayload(structuredClone(regionClaude35))
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isClaude3(), true)
+  assert.equal(cmd.maxTokens, undefined)
+  assert.equal(cmd.modelId, regionClaude35.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, [{ role: 'user', content: 'who are' }, { role: 'assistant', content: 'researching' }, { role: 'user', content: 'you' }])
+  assert.equal(cmd.temperature, undefined)
+})
+
+test('claude35 complete command works', async (t) => {
+  const payload = structuredClone(claude35)
+  payload.body.max_tokens = 25
+  payload.body.temperature = 0.5
+  t.nr.updatePayload(payload)
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isClaude3(), true)
+  assert.equal(cmd.maxTokens, 25)
+  assert.equal(cmd.modelId, payload.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, [{ role: 'user', content: 'who are' }, { role: 'assistant', content: 'researching' }, { role: 'user', content: 'you' }])
+  assert.equal(cmd.temperature, payload.body.temperature)
+})
+
+test('region specific claude35 complete command works', async (t) => {
+  const payload = structuredClone(regionClaude35)
+  payload.body.max_tokens = 25
+  payload.body.temperature = 0.5
+  t.nr.updatePayload(payload)
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isClaude3(), true)
+  assert.equal(cmd.maxTokens, 25)
+  assert.equal(cmd.modelId, payload.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, [{ role: 'user', content: 'who are' }, { role: 'assistant', content: 'researching' }, { role: 'user', content: 'you' }])
+  assert.equal(cmd.temperature, payload.body.temperature)
+})
+
+test('cohere minimal command works', async (t) => {
+  t.nr.updatePayload(structuredClone(cohere))
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isCohere(), true)
+  assert.equal(cmd.maxTokens, undefined)
+  assert.equal(cmd.modelId, cohere.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, [{ role: 'user', content: cohere.body.prompt }])
+  assert.equal(cmd.temperature, undefined)
+})
+
+test('cohere complete command works', async (t) => {
   const payload = structuredClone(cohere)
   payload.body.max_tokens = 25
   payload.body.temperature = 0.5
-  t.context.updatePayload(payload)
-  const cmd = new BedrockCommand(t.context.input)
-  t.equal(cmd.isCohere(), true)
-  t.equal(cmd.maxTokens, 25)
-  t.equal(cmd.modelId, payload.modelId)
-  t.equal(cmd.modelType, 'completion')
-  t.equal(cmd.prompt, payload.body.prompt)
-  t.equal(cmd.temperature, payload.body.temperature)
+  t.nr.updatePayload(payload)
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isCohere(), true)
+  assert.equal(cmd.maxTokens, 25)
+  assert.equal(cmd.modelId, payload.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, [{ role: 'user', content: payload.body.prompt }])
+  assert.equal(cmd.temperature, payload.body.temperature)
 })
 
-tap.test('cohere embed minimal command works', async (t) => {
-  t.context.updatePayload(structuredClone(cohereEmbed))
-  const cmd = new BedrockCommand(t.context.input)
-  t.equal(cmd.isCohereEmbed(), true)
-  t.equal(cmd.maxTokens, undefined)
-  t.equal(cmd.modelId, cohereEmbed.modelId)
-  t.equal(cmd.modelType, 'embedding')
-  t.same(cmd.prompt, cohereEmbed.body.texts.join(' '))
-  t.equal(cmd.temperature, undefined)
+test('cohere embed minimal command works', async (t) => {
+  t.nr.updatePayload(structuredClone(cohereEmbed))
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isCohereEmbed(), true)
+  assert.equal(cmd.maxTokens, undefined)
+  assert.equal(cmd.modelId, cohereEmbed.modelId)
+  assert.equal(cmd.modelType, 'embedding')
+  assert.deepStrictEqual(cmd.prompt, [{ role: 'user', content: cohereEmbed.body.texts.join(' ') }])
+  assert.equal(cmd.temperature, undefined)
 })
 
-tap.test('llama2 minimal command works', async (t) => {
-  t.context.updatePayload(structuredClone(llama2))
-  const cmd = new BedrockCommand(t.context.input)
-  t.equal(cmd.isLlama(), true)
-  t.equal(cmd.maxTokens, undefined)
-  t.equal(cmd.modelId, llama2.modelId)
-  t.equal(cmd.modelType, 'completion')
-  t.equal(cmd.prompt, llama2.body.prompt)
-  t.equal(cmd.temperature, undefined)
+test('llama2 minimal command works', async (t) => {
+  t.nr.updatePayload(structuredClone(llama2))
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isLlama(), true)
+  assert.equal(cmd.maxTokens, undefined)
+  assert.equal(cmd.modelId, llama2.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, [{ role: 'user', content: llama2.body.prompt }])
+  assert.equal(cmd.temperature, undefined)
 })
 
-tap.test('llama2 complete command works', async (t) => {
+test('llama2 complete command works', async (t) => {
   const payload = structuredClone(llama2)
   payload.body.max_gen_length = 25
   payload.body.temperature = 0.5
-  t.context.updatePayload(payload)
-  const cmd = new BedrockCommand(t.context.input)
-  t.equal(cmd.isLlama(), true)
-  t.equal(cmd.maxTokens, 25)
-  t.equal(cmd.modelId, payload.modelId)
-  t.equal(cmd.modelType, 'completion')
-  t.equal(cmd.prompt, payload.body.prompt)
-  t.equal(cmd.temperature, payload.body.temperature)
+  t.nr.updatePayload(payload)
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isLlama(), true)
+  assert.equal(cmd.maxTokens, 25)
+  assert.equal(cmd.modelId, payload.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, [{ role: 'user', content: payload.body.prompt }])
+  assert.equal(cmd.temperature, payload.body.temperature)
 })
 
-tap.test('llama3 minimal command works', async (t) => {
-  t.context.updatePayload(structuredClone(llama3))
-  const cmd = new BedrockCommand(t.context.input)
-  t.equal(cmd.isLlama(), true)
-  t.equal(cmd.maxTokens, undefined)
-  t.equal(cmd.modelId, llama3.modelId)
-  t.equal(cmd.modelType, 'completion')
-  t.equal(cmd.prompt, llama3.body.prompt)
-  t.equal(cmd.temperature, undefined)
+test('llama3 minimal command works', async (t) => {
+  t.nr.updatePayload(structuredClone(llama3))
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isLlama(), true)
+  assert.equal(cmd.maxTokens, undefined)
+  assert.equal(cmd.modelId, llama3.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, [{ role: 'user', content: llama3.body.prompt }])
+  assert.equal(cmd.temperature, undefined)
 })
 
-tap.test('llama3 complete command works', async (t) => {
+test('llama3 complete command works', async (t) => {
   const payload = structuredClone(llama3)
   payload.body.max_gen_length = 25
   payload.body.temperature = 0.5
-  t.context.updatePayload(payload)
-  const cmd = new BedrockCommand(t.context.input)
-  t.equal(cmd.isLlama(), true)
-  t.equal(cmd.maxTokens, 25)
-  t.equal(cmd.modelId, payload.modelId)
-  t.equal(cmd.modelType, 'completion')
-  t.equal(cmd.prompt, payload.body.prompt)
-  t.equal(cmd.temperature, payload.body.temperature)
+  t.nr.updatePayload(payload)
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isLlama(), true)
+  assert.equal(cmd.maxTokens, 25)
+  assert.equal(cmd.modelId, payload.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, [{ role: 'user', content: payload.body.prompt }])
+  assert.equal(cmd.temperature, payload.body.temperature)
 })
 
-tap.test('titan minimal command works', async (t) => {
-  t.context.updatePayload(structuredClone(titan))
-  const cmd = new BedrockCommand(t.context.input)
-  t.equal(cmd.isTitan(), true)
-  t.equal(cmd.maxTokens, undefined)
-  t.equal(cmd.modelId, titan.modelId)
-  t.equal(cmd.modelType, 'completion')
-  t.equal(cmd.prompt, titan.body.inputText)
-  t.equal(cmd.temperature, undefined)
+test('titan minimal command works', async (t) => {
+  t.nr.updatePayload(structuredClone(titan))
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isTitan(), true)
+  assert.equal(cmd.maxTokens, undefined)
+  assert.equal(cmd.modelId, titan.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, [{ role: 'user', content: titan.body.inputText }])
+  assert.equal(cmd.temperature, undefined)
 })
 
-tap.test('titan complete command works', async (t) => {
+test('titan complete command works', async (t) => {
   const payload = structuredClone(titan)
   payload.body.textGenerationConfig = {
     maxTokenCount: 25,
     temperature: 0.5
   }
-  t.context.updatePayload(payload)
-  const cmd = new BedrockCommand(t.context.input)
-  t.equal(cmd.isTitan(), true)
-  t.equal(cmd.maxTokens, 25)
-  t.equal(cmd.modelId, payload.modelId)
-  t.equal(cmd.modelType, 'completion')
-  t.equal(cmd.prompt, payload.body.inputText)
-  t.equal(cmd.temperature, payload.body.textGenerationConfig.temperature)
+  t.nr.updatePayload(payload)
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isTitan(), true)
+  assert.equal(cmd.maxTokens, 25)
+  assert.equal(cmd.modelId, payload.modelId)
+  assert.equal(cmd.modelType, 'completion')
+  assert.deepEqual(cmd.prompt, [{ role: 'user', content: payload.body.inputText }])
+  assert.equal(cmd.temperature, payload.body.textGenerationConfig.temperature)
 })
 
-tap.test('titan embed minimal command works', async (t) => {
-  t.context.updatePayload(structuredClone(titanEmbed))
-  const cmd = new BedrockCommand(t.context.input)
-  t.equal(cmd.isTitanEmbed(), true)
-  t.equal(cmd.maxTokens, undefined)
-  t.equal(cmd.modelId, titanEmbed.modelId)
-  t.equal(cmd.modelType, 'embedding')
-  t.equal(cmd.prompt, titanEmbed.body.inputText)
-  t.equal(cmd.temperature, undefined)
+test('titan embed minimal command works', async (t) => {
+  t.nr.updatePayload(structuredClone(titanEmbed))
+  const cmd = new BedrockCommand(t.nr.input)
+  assert.equal(cmd.isTitanEmbed(), true)
+  assert.equal(cmd.maxTokens, undefined)
+  assert.equal(cmd.modelId, titanEmbed.modelId)
+  assert.equal(cmd.modelType, 'embedding')
+  assert.deepEqual(cmd.prompt, [{ role: 'user', content: titanEmbed.body.inputText }])
+  assert.equal(cmd.temperature, undefined)
 })

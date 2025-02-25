@@ -84,8 +84,11 @@ common.setupRoutes = (fastify) => {
 
 /**
  * Defines both a global middleware and middleware mounted at a specific
- * path. This tests the `middie`, and/or `fastify-express` plugin middlewawre
+ * path. This tests the `middie` and/or `fastify-express` plugin middleware
  * instrumentation
+ * @param root0
+ * @param root0.fastify
+ * @param root0.calls
  */
 common.registerMiddlewares = ({ fastify, calls }) => {
   function testMiddleware(req, res, next) {
@@ -107,8 +110,11 @@ common.registerMiddlewares = ({ fastify, calls }) => {
 /**
  * Helper to make a request and parse the json body
  *
+ * @param address.address
  * @param {Object} address fastify address contains address/port/family
+ * @param address.port
  * @param {string} uri to make request to
+ * @param address.family
  * @returns {Object} parsed json body
  */
 common.makeRequest = async ({ address, port, family }, uri) => {

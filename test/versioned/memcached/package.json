@@ -6,13 +6,13 @@
   "tests": [
     {
       "engines": {
-        "node": ">=16"
+        "node": ">=18"
       },
       "dependencies": {
         "memcached": ">=2.2.0"
       },
       "files": [
-        "memcached.tap.js"
+        "memcached.test.js"
       ]
     }
   ]

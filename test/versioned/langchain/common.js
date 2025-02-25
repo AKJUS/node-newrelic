@@ -5,7 +5,7 @@
 
 'use strict'
 
-const tap = require('tap')
+const { match } = require('../../lib/custom-assertions')
 
 function filterLangchainEvents(events) {
   return events.filter((event) => {
@@ -21,36 +21,44 @@ function filterLangchainEventsByType(events, msgType) {
   })
 }
 
-function assertLangChainVectorSearch({ tx, vectorSearch, responseDocumentSize }) {
+function assertLangChainVectorSearch(
+  { tx, vectorSearch, responseDocumentSize },
+  { assert = require('node:assert') } = {}
+) {
+  const [segment] = tx.trace.getChildren(tx.trace.root.id)
   const expectedSearch = {
-    'id': /[a-f0-9]{36}/,
-    'appName': 'New Relic for Node.js tests',
-    'span_id': tx.trace.root.children[0].id,
-    'trace_id': tx.traceId,
+    id: /[a-f0-9]{36}/,
+    appName: 'New Relic for Node.js tests',
+    span_id: segment.id,
+    trace_id: tx.traceId,
     'request.k': 1,
     'request.query': 'This is an embedding test.',
-    'ingest_source': 'Node',
-    'vendor': 'langchain',
-    'virtual_llm': true,
-    ['response.number_of_documents']: responseDocumentSize,
-    'duration': tx.trace.root.children[0].getDurationInMillis()
+    ingest_source: 'Node',
+    vendor: 'langchain',
+    virtual_llm: true,
+    'response.number_of_documents': responseDocumentSize,
+    duration: segment.getDurationInMillis()
   }
 
-  this.equal(vectorSearch[0].type, 'LlmVectorSearch')
-  this.match(vectorSearch[1], expectedSearch, 'should match vector search')
+  assert.equal(vectorSearch[0].type, 'LlmVectorSearch')
+  match(vectorSearch[1], expectedSearch, { assert })
 }
 
-function assertLangChainVectorSearchResult({ tx, vectorSearchResult, vectorSearchId }) {
+function assertLangChainVectorSearchResult(
+  { tx, vectorSearchResult, vectorSearchId },
+  { assert = require('node:assert') } = {}
+) {
+  const [segment] = tx.trace.getChildren(tx.trace.root.id)
   const baseSearchResult = {
-    'id': /[a-f0-9]{36}/,
-    'search_id': vectorSearchId,
-    'appName': 'New Relic for Node.js tests',
-    'span_id': tx.trace.root.children[0].id,
-    'trace_id': tx.traceId,
-    'ingest_source': 'Node',
-    'vendor': 'langchain',
+    id: /[a-f0-9]{36}/,
+    search_id: vectorSearchId,
+    appName: 'New Relic for Node.js tests',
+    span_id: segment.id,
+    trace_id: tx.traceId,
+    ingest_source: 'Node',
+    vendor: 'langchain',
     'metadata.id': '2',
-    'virtual_llm': true
+    virtual_llm: true
   }
 
   vectorSearchResult.forEach((search) => {
@@ -63,49 +71,57 @@ function assertLangChainVectorSearchResult({ tx, vectorSearchResult, vectorSearc
       expectedChatMsg.page_content = '212 degrees Fahrenheit is equal to 100 degrees Celsius.'
     }
 
-    this.equal(search[0].type, 'LlmVectorSearchResult')
-    this.match(search[1], expectedChatMsg, 'should match vector search result')
+    assert.equal(search[0].type, 'LlmVectorSearchResult')
+    match(search[1], expectedChatMsg, { assert })
   })
 }
 
-function assertLangChainChatCompletionSummary({ tx, chatSummary, withCallback }) {
+function assertLangChainChatCompletionSummary(
+  { tx, chatSummary, withCallback },
+  { assert = require('node:assert') } = {}
+) {
+  const [segment] = tx.trace.getChildren(tx.trace.root.id)
   const expectedSummary = {
-    'id': /[a-f0-9]{36}/,
-    'appName': 'New Relic for Node.js tests',
-    'span_id': tx.trace.root.children[0].id,
-    'trace_id': tx.traceId,
-    'request_id': undefined,
-    'ingest_source': 'Node',
-    'vendor': 'langchain',
+    id: /[a-f0-9]{36}/,
+    appName: 'New Relic for Node.js tests',
+    span_id: segment.id,
+    trace_id: tx.traceId,
+    request_id: undefined,
+    ingest_source: 'Node',
+    vendor: 'langchain',
     'metadata.key': 'value',
     'metadata.hello': 'world',
-    'tags': 'tag1,tag2',
-    'virtual_llm': true,
-    ['response.number_of_messages']: 1,
-    'duration': tx.trace.root.children[0].getDurationInMillis()
+    tags: 'tag1,tag2',
+    virtual_llm: true,
+    'response.number_of_messages': 1,
+    duration: segment.getDurationInMillis()
   }
 
   if (withCallback) {
-    expectedSummary.request_id = /[a-f0-9\-]{36}/
-    expectedSummary.id = /[a-f0-9\-]{36}/
+    expectedSummary.request_id = /[a-f0-9-]{36}/
+    expectedSummary.id = /[a-f0-9-]{36}/
   }
 
-  this.equal(chatSummary[0].type, 'LlmChatCompletionSummary')
-  this.match(chatSummary[1], expectedSummary, 'should match chat summary message')
+  assert.equal(chatSummary[0].type, 'LlmChatCompletionSummary')
+  match(chatSummary[1], expectedSummary, { assert })
 }
 
-function assertLangChainChatCompletionMessages({
-  tx,
-  chatMsgs,
-  chatSummary,
-  withCallback,
-  input = '{"topic":"scientist"}',
-  output = '212 degrees Fahrenheit is equal to 100 degrees Celsius.'
-}) {
+function assertLangChainChatCompletionMessages(
+  {
+    tx,
+    chatMsgs,
+    chatSummary,
+    withCallback,
+    input = '{"topic":"scientist"}',
+    output = '212 degrees Fahrenheit is equal to 100 degrees Celsius.'
+  },
+  { assert = require('node:assert') } = {}
+) {
+  const [segment] = tx.trace.getChildren(tx.trace.root.id)
   const baseMsg = {
     id: /[a-f0-9]{36}/,
     appName: 'New Relic for Node.js tests',
-    span_id: tx.trace.root.children[0].id,
+    span_id: segment.id,
     trace_id: tx.traceId,
     ingest_source: 'Node',
     vendor: 'langchain',
@@ -115,8 +131,8 @@ function assertLangChainChatCompletionMessages({
   }
 
   if (withCallback) {
-    baseMsg.request_id = /[a-f0-9\-]{36}/
-    baseMsg.id = /[a-f0-9\-]{36}/
+    baseMsg.request_id = /[a-f0-9-]{36}/
+    baseMsg.id = /[a-f0-9-]{36}/
   }
 
   chatMsgs.forEach((msg) => {
@@ -131,17 +147,16 @@ function assertLangChainChatCompletionMessages({
       expectedChatMsg.is_response = true
     }
 
-    this.equal(msg[0].type, 'LlmChatCompletionMessage')
-    this.match(msg[1], expectedChatMsg, 'should match chat completion message')
+    assert.equal(msg[0].type, 'LlmChatCompletionMessage')
+    match(msg[1], expectedChatMsg, { assert })
   })
 }
 
-tap.Test.prototype.addAssert('langchainMessages', 1, assertLangChainChatCompletionMessages)
-tap.Test.prototype.addAssert('langchainSummary', 1, assertLangChainChatCompletionSummary)
-tap.Test.prototype.addAssert('langchainVectorSearch', 1, assertLangChainVectorSearch)
-tap.Test.prototype.addAssert('langchainVectorSearchResult', 1, assertLangChainVectorSearchResult)
-
 module.exports = {
+  assertLangChainChatCompletionMessages,
+  assertLangChainChatCompletionSummary,
+  assertLangChainVectorSearch,
+  assertLangChainVectorSearchResult,
   filterLangchainEvents,
   filterLangchainEventsByType
 }

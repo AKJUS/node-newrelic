@@ -5,91 +5,82 @@
 
 'use strict'
 
-const tap = require('tap')
+const test = require('node:test')
+const assert = require('node:assert')
+
 const PriorityQueue = require('../../lib/priority-queue')
 
-tap.test('PriorityQueue', function (t) {
-  t.autoend()
-  let queue = null
+test('#add', async (t) => {
+  await t.test('structures the data as a min heap', () => {
+    const queue = new PriorityQueue()
 
-  t.test('#add', function (t) {
-    t.autoend()
+    queue.add('left grandchild', 10)
+    queue.add('parent', 1)
+    queue.add('right child', 5)
+    queue.add('left child', 8)
 
-    t.test('structures the data as a min heap', function (t) {
-      queue = new PriorityQueue()
-
-      queue.add('left grandchild', 10)
-      queue.add('parent', 1)
-      queue.add('right child', 5)
-      queue.add('left child', 8)
-
-      t.same(queue.toArray(), ['parent', 'left child', 'right child', 'left grandchild'])
-      t.end()
-    })
-
-    t.test('replaces lowest priority item if limit is met', function (t) {
-      queue = new PriorityQueue(4)
-
-      queue.add('left grandchild', 10)
-      queue.add('parent', 1)
-      queue.add('right child', 5)
-      queue.add('left child', 8)
-
-      t.same(queue.toArray(), ['parent', 'left child', 'right child', 'left grandchild'])
-
-      queue.add('new parent', 2)
-
-      t.same(queue.toArray(), ['new parent', 'right child', 'left grandchild', 'left child'])
-      t.end()
-    })
-
-    t.test('does not insert events in the case the limit is 0', function (t) {
-      queue = new PriorityQueue(0)
-      t.equal(queue.add('test', 1), false)
-      t.equal(queue.length, 0)
-      t.end()
-    })
+    assert.deepEqual(queue.toArray(), ['parent', 'left child', 'right child', 'left grandchild'])
   })
 
-  t.test('#merge', function (t) {
-    t.autoend()
+  await t.test('replaces lowest priority item if limit is met', () => {
+    const queue = new PriorityQueue(4)
 
-    t.test('merges two sources and maintains the limit', function (t) {
-      const queueLimit = 4
-      const queue1 = new PriorityQueue(queueLimit)
-      const queue2 = new PriorityQueue(queueLimit)
+    queue.add('left grandchild', 10)
+    queue.add('parent', 1)
+    queue.add('right child', 5)
+    queue.add('left child', 8)
 
-      for (let pri = 0; pri < queueLimit; ++pri) {
-        queue1.add('test', pri)
-        queue2.add('test', pri)
-      }
+    assert.deepEqual(queue.toArray(), ['parent', 'left child', 'right child', 'left grandchild'])
 
-      queue1.merge(queue2)
-      t.equal(queue1.length, queueLimit)
-      t.end()
-    })
+    queue.add('new parent', 2)
+
+    assert.deepEqual(queue.toArray(), [
+      'new parent',
+      'right child',
+      'left grandchild',
+      'left child'
+    ])
   })
 
-  t.test('#setLimit', function (t) {
-    t.autoend()
+  await t.test('does not insert events in the case the limit is 0', () => {
+    const queue = new PriorityQueue(0)
+    assert.equal(queue.add('test', 1), false)
+    assert.equal(queue.length, 0)
+  })
+})
 
-    t.test('resets the limit property and slices the data if necessary', function (t) {
-      queue = new PriorityQueue(5)
+test('#merge', async (t) => {
+  await t.test('merges two sources and maintains the limit', () => {
+    const queueLimit = 4
+    const queue1 = new PriorityQueue(queueLimit)
+    const queue2 = new PriorityQueue(queueLimit)
 
-      t.equal(queue.limit, 5)
-      queue.setLimit(10)
-      t.equal(queue.limit, 10)
+    for (let pri = 0; pri < queueLimit; ++pri) {
+      queue1.add('test', pri)
+      queue2.add('test', pri)
+    }
 
-      for (let i = 0; i < 6; i++) {
-        queue.add(i, i)
-      }
+    queue1.merge(queue2)
+    assert.equal(queue1.length, queueLimit)
+  })
+})
 
-      t.equal(queue.length, 6)
-      t.same(queue.toArray(), [0, 5, 4, 3, 2, 1])
-      queue.setLimit(5)
-      t.same(queue.toArray(), [1, 2, 3, 4, 5])
-      t.equal(queue.length, 5)
-      t.end()
-    })
+test('#setLimit', async (t) => {
+  await t.test('resets the limit property and slices the data if necessary', () => {
+    const queue = new PriorityQueue(5)
+
+    assert.equal(queue.limit, 5)
+    queue.setLimit(10)
+    assert.equal(queue.limit, 10)
+
+    for (let i = 0; i < 6; i++) {
+      queue.add(i, i)
+    }
+
+    assert.equal(queue.length, 6)
+    assert.deepEqual(queue.toArray(), [0, 5, 4, 3, 2, 1])
+    queue.setLimit(5)
+    assert.deepEqual(queue.toArray(), [1, 2, 3, 4, 5])
+    assert.equal(queue.length, 5)
   })
 })

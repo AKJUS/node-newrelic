@@ -6,13 +6,13 @@
   "tests": [
     {
       "engines": {
-        "node": ">=16"
+        "node": ">=18"
       },
       "dependencies": {
         "bunyan": ">=1.8.12"
       },
       "files": [
-        "bunyan.tap.js"
+        "bunyan.test.js"
       ]
     }
   ]

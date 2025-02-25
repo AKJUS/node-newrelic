@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/* eslint-disable max-len */
 'use strict'
 
 const kinesisDataStreamEvent = {
@@ -227,7 +226,7 @@ const cloudFrontEvent = {
           method: 'GET',
           uri: '/picture.jpg',
           headers: {
-            'host': [
+            host: [
               {
                 key: 'Host',
                 value: 'd111111abcdef8.cloudfront.net'
@@ -260,9 +259,12 @@ const cloudFormationCreateRequestEvent = {
 }
 
 const apiGatewayProxyEvent = {
+  version: '1.0',
+  resource: '/{proxy+}',
   path: '/test/hello',
+  httpMethod: 'GET',
   headers: {
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
     'Accept-Encoding': 'gzip, deflate, lzma, sdch, br',
     'Accept-Language': 'en-US,en;q=0.8',
     'CloudFront-Forwarded-Proto': 'https',
@@ -271,18 +273,21 @@ const apiGatewayProxyEvent = {
     'CloudFront-Is-SmartTV-Viewer': 'false',
     'CloudFront-Is-Tablet-Viewer': 'false',
     'CloudFront-Viewer-Country': 'US',
-    'Host': 'wt6mne2s9k.execute-api.us-west-2.amazonaws.com',
+    Host: 'wt6mne2s9k.execute-api.us-west-2.amazonaws.com',
     'Upgrade-Insecure-Requests': '1',
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6)',
-    'Via': '1.1 fb7cca60f0ecd82ce07790c9c5eef16c.cloudfront.net (CloudFront)',
+    Via: '1.1 fb7cca60f0ecd82ce07790c9c5eef16c.cloudfront.net (CloudFront)',
     'X-Amz-Cf-Id': 'nBsWBOrSHMgnaROZJK1wGCZ9PcRcSpq_oSXZNQwQ10OTZL4cimZo3g==',
     'X-Forwarded-For': '192.168.100.1, 192.168.1.1',
     'X-Forwarded-Port': '443',
     'X-Forwarded-Proto': 'https'
   },
-  pathParameters: {
-    proxy: 'hello'
+  multiValueHeaders: null,
+  queryStringParameters: {
+    name: 'me',
+    team: 'node agent'
   },
+  multiValueQueryStringParameters: null,
   requestContext: {
     accountId: '123456789012',
     resourceId: 'us4z18',
@@ -305,15 +310,14 @@ const apiGatewayProxyEvent = {
     httpMethod: 'GET',
     apiId: 'wt6mne2s9k'
   },
-  resource: '/{proxy+}',
-  httpMethod: 'GET',
-  queryStringParameters: {
-    name: 'me',
-    team: 'node agent'
+  pathParameters: {
+    proxy: 'hello'
   },
   stageVariables: {
     stageVarName: 'stageVarValue'
-  }
+  },
+  body: null,
+  isBase64Encoded: false
 }
 
 const cloudWatchLogsEvent = {
@@ -367,12 +371,12 @@ const albEvent = {
     query: '1234ABCD'
   },
   headers: {
-    'accept':
+    accept:
       'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
     'accept-encoding': 'gzip',
     'accept-language': 'en-US,en;q=0.9',
-    'connection': 'keep-alive',
-    'host': 'lambda-alb-123578498.us-east-2.elb.amazonaws.com',
+    connection: 'keep-alive',
+    host: 'lambda-alb-123578498.us-east-2.elb.amazonaws.com',
     'upgrade-insecure-requests': '1',
     'user-agent':
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
@@ -387,14 +391,14 @@ const albEvent = {
 }
 
 const cloudwatchScheduled = {
-  'id': 'cdc73f9d-aea9-11e3-9d5a-835b769c0d9c',
+  id: 'cdc73f9d-aea9-11e3-9d5a-835b769c0d9c',
   'detail-type': 'Scheduled Event',
-  'source': 'aws.events',
-  'account': '{{{account-id}}}',
-  'time': '1970-01-01T00:00:00Z',
-  'region': 'us-west-2',
-  'resources': ['arn:aws:events:us-west-2:123456789012:rule/ExampleRule'],
-  'detail': {}
+  source: 'aws.events',
+  account: '{{{account-id}}}',
+  time: '1970-01-01T00:00:00Z',
+  region: 'us-west-2',
+  resources: ['arn:aws:events:us-west-2:123456789012:rule/ExampleRule'],
+  detail: {}
 }
 
 const sesEvent = {
@@ -490,25 +494,19 @@ const sesEvent = {
 }
 
 const albEventWithMultiValueParameters = {
-  requestContext: {
-    elb: {
-      targetGroupArn:
-        'arn:aws:elasticloadbalancing:us-east-2:123456789012:targetgroup/lambda-279XGJDqGZ5rsrHC2Fjr/49e9d65c45c6791a'
-    }
-  },
-  httpMethod: 'GET',
+  version: '1.0',
+  resource: '/lambda',
   path: '/lambda',
-  multiValueQueryStringParameters: {
-    query: ['1234ABCD', 'other']
-  },
+  httpMethod: 'GET',
+  headers: null,
   multiValueHeaders: {
-    'accept': [
+    accept: [
       'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8'
     ],
     'accept-encoding': ['gzip'],
     'accept-language': ['en-US,en;q=0.9'],
-    'connection': ['keep-alive'],
-    'host': ['lambda-alb-123578498.us-east-2.elb.amazonaws.com'],
+    connection: ['keep-alive'],
+    host: ['lambda-alb-123578498.us-east-2.elb.amazonaws.com'],
     'upgrade-insecure-requests': ['1'],
     'user-agent': [
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36'
@@ -523,23 +521,35 @@ const albEventWithMultiValueParameters = {
       'cookie-name=cookie-other-value'
     ]
   },
+  queryStringParameters: null,
+  multiValueQueryStringParameters: {
+    query: ['1234ABCD', 'other']
+  },
+  requestContext: {
+    elb: {
+      targetGroupArn:
+        'arn:aws:elasticloadbalancing:us-east-2:123456789012:targetgroup/lambda-279XGJDqGZ5rsrHC2Fjr/49e9d65c45c6791a'
+    }
+  },
+  pathParameters: null,
+  stageVariables: null,
   body: '',
   isBase64Encoded: false
 }
 
 module.exports = {
-  kinesisDataStreamEvent: kinesisDataStreamEvent,
-  s3PutEvent: s3PutEvent,
-  snsEvent: snsEvent,
-  dynamoDbUpdateEvent: dynamoDbUpdateEvent,
-  codeCommitEvent: codeCommitEvent,
-  cloudFrontEvent: cloudFrontEvent,
-  cloudFormationCreateRequestEvent: cloudFormationCreateRequestEvent,
-  apiGatewayProxyEvent: apiGatewayProxyEvent,
-  cloudWatchLogsEvent: cloudWatchLogsEvent,
-  kinesisDataFirehoseEvent: kinesisDataFirehoseEvent,
-  albEvent: albEvent,
-  albEventWithMultiValueParameters: albEventWithMultiValueParameters,
-  cloudwatchScheduled: cloudwatchScheduled,
-  sesEvent: sesEvent
+  kinesisDataStreamEvent,
+  s3PutEvent,
+  snsEvent,
+  dynamoDbUpdateEvent,
+  codeCommitEvent,
+  cloudFrontEvent,
+  cloudFormationCreateRequestEvent,
+  apiGatewayProxyEvent,
+  cloudWatchLogsEvent,
+  kinesisDataFirehoseEvent,
+  albEvent,
+  albEventWithMultiValueParameters,
+  cloudwatchScheduled,
+  sesEvent
 }

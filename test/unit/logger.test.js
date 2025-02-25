@@ -5,154 +5,209 @@
 
 'use strict'
 
-const tap = require('tap')
-const cp = require('child_process')
+const test = require('node:test')
+const assert = require('node:assert')
+const path = require('node:path')
+const cp = require('node:child_process')
+const { Transform } = require('stream')
+
+const tempRemoveListeners = require('../lib/temp-remove-listeners')
+function expectEntry(entry, msg, level, component) {
+  assert.equal(entry.hostname, 'my-host')
+  assert.equal(entry.name, 'test-logger')
+  assert.equal(entry.pid, process.pid)
+  assert.equal(entry.v, 0)
+  assert.equal(entry.level, level)
+  assert.equal(entry.msg, msg)
+  if (component) {
+    assert.equal(entry.component, component)
+  }
+}
+
 const Logger = require('../../lib/util/logger')
-const path = require('path')
+function addResult(ctx, data, encoding, done) {
+  ctx.nr.results = ctx.nr.results.concat(
+    data.toString().split('\n').filter(Boolean).map(JSON.parse)
+  )
+  done()
+}
 
-tap.test('Logger', function (t) {
-  t.autoend()
-  let logger = null
+test.beforeEach((ctx) => {
+  ctx.nr = {}
+  ctx.nr.logger = new Logger({
+    name: 'newrelic',
+    level: 'trace',
+    hostname: 'my-host',
+    enabled: true,
+    configured: true
+  })
+})
 
-  t.beforeEach(function () {
-    logger = new Logger({
-      name: 'newrelic',
-      level: 'trace',
-      enabled: true,
-      configured: true
+test('should not throw when passed-in log level is 0', (t) => {
+  const { logger } = t.nr
+  assert.doesNotThrow(() => {
+    logger.level(0)
+  })
+})
+
+test('should not throw when passed-in log level is ONE MILLION', (t) => {
+  const { logger } = t.nr
+  assert.doesNotThrow(function () {
+    logger.level(1000000)
+  })
+})
+
+test('should not throw when passed-in log level is "verbose"', (t) => {
+  const { logger } = t.nr
+  assert.doesNotThrow(function () {
+    logger.level('verbose')
+  })
+})
+
+test('should enqueue logs until configured', (t) => {
+  const { logger } = t.nr
+  logger.options.configured = false
+  logger.trace('trace')
+  logger.debug('debug')
+  logger.info('info')
+  logger.warn('warn')
+  logger.error('error')
+  logger.fatal('fatal')
+  assert.ok(logger.logQueue.length === 6, 'should have 6 logs in the queue')
+})
+
+test('should not enqueue logs when disabled', (t) => {
+  const { logger } = t.nr
+  logger.trace('trace')
+  logger.debug('debug')
+  logger.info('info')
+  logger.warn('warn')
+  logger.error('error')
+  logger.fatal('fatal')
+  assert.ok(logger.logQueue.length === 0, 'should have 0 logs in the queue')
+})
+
+test('should flush logs when configured', (t) => {
+  const { logger } = t.nr
+  logger.options.configured = false
+  logger.trace('trace')
+  logger.debug('debug')
+  logger.info('info')
+  logger.warn('warn')
+  logger.error('error')
+  logger.fatal('fatal')
+
+  assert.ok(logger.logQueue.length === 6, 'should have 6 logs in the queue')
+
+  logger.configure({
+    level: 'trace',
+    enabled: true,
+    name: 'test-logger'
+  })
+
+  assert.ok(logger.logQueue.length === 0, 'should have 0 logs in the queue')
+})
+
+test('should properly format logs and child logs when flushing', (t, end) => {
+  const { logger } = t.nr
+  t.nr.results = []
+  logger.pipe(new Transform({
+    transform: addResult.bind(this, t)
+  }))
+  logger.options.configured = false
+  const child = logger.child({ component: 'test-child' })
+  logger.trace('trace')
+  logger.info('%d: %s', 1, 'a')
+  logger.info('123', '4', '5')
+  child.info('child-info')
+  const e = new Error()
+  e.name = 'Testing'
+  e.message = 'Test message'
+  child.trace(e, 'Test error')
+  logger.configure({
+    level: 'trace',
+    enabled: true,
+    name: 'test-logger'
+  })
+  child.error('Test error %d %s', 1, 'sub')
+  process.nextTick(() => {
+    const { results } = t.nr
+    assert.equal(results.length, 6)
+    expectEntry(results[0], '{"name":"Testing","message":"Test message"} Test error', 10, 'test-child')
+    expectEntry(results[1], 'child-info', 30, 'test-child')
+    expectEntry(results[2], '123 4 5', 30)
+    expectEntry(results[3], '1: a', 30)
+    expectEntry(results[4], 'trace', 10)
+    expectEntry(results[5], 'Test error 1 sub', 50)
+    end()
+  })
+})
+
+test('should fallback to default logging config when config is invalid', (t, end) => {
+  runTestFile('disabled-with-invalid-config/disabled.js', function (error, message) {
+    assert.equal(error, undefined)
+
+    // should pipe logs to stdout if config is invalid, even if logging is disabled
+    assert.ok(message)
+    end()
+  })
+})
+
+test('should not cause crash if unwritable', (t, end) => {
+  runTestFile('unwritable-log/unwritable.js', end)
+})
+
+test('should not be created if logger is disabled', (t, end) => {
+  runTestFile('disabled-log/disabled.js', end)
+})
+
+test('should not log bootstrapping logs when logs disabled', (t, end) => {
+  runTestFile('disabled-with-log-queue/disabled.js', function (error, message) {
+    assert.equal(error, undefined)
+    assert.equal(message, undefined)
+    end()
+  })
+})
+
+test('should log bootstrapping logs at specified level when logs enabled', (t, end) => {
+  runTestFile('enabled-with-log-queue/enabled.js', function (error, message) {
+    assert.equal(error, undefined)
+    assert.ok(message)
+
+    let logs = []
+    assert.doesNotThrow(function () {
+      logs = message.split('\n').filter(Boolean).map(JSON.parse)
     })
+
+    assert.ok(logs.length >= 1)
+    assert.ok(logs.every((log) => log.level >= 30))
+
+    end()
+  })
+})
+
+test('should not throw for huge messages', (t, end) => {
+  const { logger } = t.nr
+
+  tempRemoveListeners({ t, emitter: process, event: 'warning' })
+  process.once('warning', (warning) => {
+    assert.equal(warning.name, 'NewRelicWarning')
+    assert.ok(warning.message)
+    end()
   })
 
-  t.afterEach(function () {
-    logger = null
-  })
+  let huge = 'a'
+  while (huge.length < Logger.MAX_LOG_BUFFER / 2) {
+    huge += huge
+  }
 
-  t.test('should not throw when passed-in log level is 0', function (t) {
-    t.doesNotThrow(function () {
-      logger.level(0)
-    })
-    t.end()
-  })
-
-  t.test('should not throw when passed-in log level is ONE MILLION', function (t) {
-    t.doesNotThrow(function () {
-      logger.level(1000000)
-    })
-    t.end()
-  })
-
-  t.test('should not throw when passed-in log level is "verbose"', function (t) {
-    t.doesNotThrow(function () {
-      logger.level('verbose')
-    })
-    t.end()
-  })
-
-  t.test('should enqueue logs until configured', function (t) {
-    logger.options.configured = false
-    logger.trace('trace')
-    logger.debug('debug')
-    logger.info('info')
-    logger.warn('warn')
-    logger.error('error')
-    logger.fatal('fatal')
-    t.ok(logger.logQueue.length === 6, 'should have 6 logs in the queue')
-    t.end()
-  })
-
-  t.test('should not enqueue logs when disabled', function (t) {
-    logger.trace('trace')
-    logger.debug('debug')
-    logger.info('info')
-    logger.warn('warn')
-    logger.error('error')
-    logger.fatal('fatal')
-    t.ok(logger.logQueue.length === 0, 'should have 0 logs in the queue')
-    t.end()
-  })
-
-  t.test('should flush logs when configured', function (t) {
-    logger.options.configured = false
-    logger.trace('trace')
-    logger.debug('debug')
-    logger.info('info')
-    logger.warn('warn')
-    logger.error('error')
-    logger.fatal('fatal')
-
-    t.ok(logger.logQueue.length === 6, 'should have 6 logs in the queue')
-
-    logger.configure({
-      level: 'trace',
-      enabled: true,
-      name: 'test-logger'
-    })
-
-    t.ok(logger.logQueue.length === 0, 'should have 0 logs in the queue')
-    t.end()
-  })
-
-  t.test('should fallback to default logging config when config is invalid', function (t) {
-    runTestFile('disabled-with-invalid-config/disabled.js', function (error, message) {
-      t.notOk(error)
-
-      // should pipe logs to stdout if config is invalid, even if logging is disabled
-      t.ok(message)
-      t.end()
-    })
-  })
-
-  t.test('should not cause crash if unwritable', function (t) {
-    runTestFile('unwritable-log/unwritable.js', t.end)
-  })
-
-  t.test('should not be created if logger is disabled', function (t) {
-    runTestFile('disabled-log/disabled.js', t.end)
-  })
-
-  t.test('should not log bootstrapping logs when logs disabled', function (t) {
-    runTestFile('disabled-with-log-queue/disabled.js', function (error, message) {
-      t.notOk(error)
-      t.notOk(message)
-      t.end()
-    })
-  })
-
-  t.test('should log bootstrapping logs at specified level when logs enabled', function (t) {
-    runTestFile('enabled-with-log-queue/enabled.js', function (error, message) {
-      t.notOk(error)
-      t.ok(message)
-
-      let logs = []
-      t.doesNotThrow(function () {
-        logs = message.split('\n').filter(Boolean).map(JSON.parse)
-      })
-
-      t.ok(logs.length >= 1)
-      t.ok(logs.every((log) => log.level >= 30))
-
-      t.end()
-    })
-  })
-
-  t.test('should not throw for huge messages', function (t) {
-    process.once('warning', (warning) => {
-      t.equal(warning.name, 'NewRelicWarning')
-      t.ok(warning.message)
-      t.end()
-    })
-
-    let huge = 'a'
-    while (huge.length < Logger.MAX_LOG_BUFFER / 2) {
-      huge += huge
-    }
-
-    t.doesNotThrow(() => {
-      logger.fatal('some message to start the buffer off')
-      logger.fatal(huge)
-      logger.fatal(huge)
-    })
-  })
+  try {
+    logger.fatal('some message to start the buffer off')
+    logger.fatal(huge)
+    logger.fatal(huge)
+  } catch (error) {
+    assert.ifError(error)
+  }
 })
 
 /**

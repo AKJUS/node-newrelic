@@ -85,19 +85,49 @@ function handler(req, res) {
         break
       }
 
+      // v1 seems to be the same as v2, just with less helpful responses.
       case 'anthropic.claude-v1':
       case 'anthropic.claude-instant-v1':
-      // v1 seems to be the same as v2, just with less helpful responses.
       case 'anthropic.claude-v2':
-      case 'anthropic.claude-v2:1': {
+      case 'anthropic.claude-v2:1':
+      case 'us.anthropic.claude-v1':
+      case 'us.anthropic.claude-instant-v1':
+      case 'us.anthropic.claude-v2':
+      case 'us.anthropic.claude-v2:1':
+      case 'eu.anthropic.claude-v1':
+      case 'eu.anthropic.claude-instant-v1':
+      case 'eu.anthropic.claude-v2':
+      case 'eu.anthropic.claude-v2:1':
+      case 'apac.anthropic.claude-v1':
+      case 'apac.anthropic.claude-instant-v1':
+      case 'apac.anthropic.claude-v2':
+      case 'apac.anthropic.claude-v2:1':{
         response = responses.claude.get(payload.prompt)
         break
       }
 
       case 'anthropic.claude-3-haiku-20240307-v1:0':
       case 'anthropic.claude-3-opus-20240229-v1:0':
-      case 'anthropic.claude-3-sonnet-20240229-v1:0': {
+      case 'anthropic.claude-3-sonnet-20240229-v1:0':
+      case 'us.anthropic.claude-3-haiku-20240307-v1:0':
+      case 'us.anthropic.claude-3-opus-20240229-v1:0':
+      case 'us.anthropic.claude-3-sonnet-20240229-v1:0':
+      case 'eu.anthropic.claude-3-haiku-20240307-v1:0':
+      case 'eu.anthropic.claude-3-opus-20240229-v1:0':
+      case 'eu.anthropic.claude-3-sonnet-20240229-v1:0':
+      case 'apac.anthropic.claude-3-haiku-20240307-v1:0':
+      case 'apac.anthropic.claude-3-opus-20240229-v1:0':
+      case 'apac.anthropic.claude-3-sonnet-20240229-v1:0': {
         response = responses.claude3.get(payload?.messages?.[0]?.content)
+        break
+      }
+
+      // Chunked claude model
+      case 'anthropic.claude-3-5-sonnet-20240620-v1:0':
+      case 'us.anthropic.claude-3-5-sonnet-20240620-v1:0':
+      case 'eu.anthropic.claude-3-5-sonnet-20240620-v1:0':
+      case 'apac.anthropic.claude-3-5-sonnet-20240620-v1:0':{
+        response = responses.claude3.get(payload?.messages?.[0]?.content?.[0].text)
         break
       }
 
@@ -113,9 +143,9 @@ function handler(req, res) {
         break
       }
 
+      // llama3 responses are identical, just return llama2 data
       case 'meta.llama2-13b-chat-v1':
       case 'meta.llama2-70b-chat-v1':
-      // llama3 responses are indentical, just return llama2 data
       case 'meta.llama3-8b-instruct-v1:0':
       case 'meta.llama3-70b-instruct-v1:0': {
         response = responses.llama.get(payload.prompt)

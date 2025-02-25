@@ -7,14 +7,14 @@
   "tests": [
     {
       "engines": {
-        "node": ">=16.12.0"
+        "node": ">=18"
       },
       "dependencies": {
         "@grpc/grpc-js": ">=1.4.0"
       },
       "files": [
-        "client-unary.tap.mjs",
-        "server-unary.tap.mjs"
+        "client-unary.test.mjs",
+        "server-unary.test.mjs"
       ]
     }
   ]

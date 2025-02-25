@@ -5,45 +5,25 @@
   "private": true,
   "tests": [
     {
+      "comment": "Only tests promise based instrumentation. Callback based instrumentation is tested for v4 of mongodb in `test/version/mongodb-esm` folder",
       "engines": {
-        "node": ">=16"
-      },
-      "dependencies": {
-        "mongodb": {
-          "versions": ">=2.1 < 4.0.0",
-          "samples": "2"
-        }
-      },
-      "files": [
-        "legacy/bulk.tap.js",
-        "legacy/cursor.tap.js",
-        "legacy/db.tap.js",
-        "legacy/find.tap.js",
-        "legacy/index.tap.js",
-        "legacy/misc.tap.js",
-        "legacy/update.tap.js"
-      ]
-    },
-    {
-      "engines": {
-        "node": ">=16"
+        "node": ">=18"
       },
       "dependencies": {
         "mongodb": ">=4.1.4"
       },
       "files": [
-        "bulk.tap.js",
-        "collection-find.tap.js",
-        "collection-index.tap.js",
-        "collection-misc.tap.js",
-        "collection-update.tap.js",
-        "cursor.tap.js",
-        "db.tap.js"
+        "bulk.test.js",
+        "collection-find.test.js",
+        "collection-index.test.js",
+        "collection-misc.test.js",
+        "collection-update.test.js",
+        "cursor.test.js",
+        "db.test.js"
       ]
     }
   ],
-  "dependencies": {},
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   }
 }

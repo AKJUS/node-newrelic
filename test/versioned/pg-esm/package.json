@@ -7,32 +7,17 @@
   "tests": [
     {
       "engines": {
-        "node": ">=16.12.0"
+        "node": ">=18"
       },
       "dependencies": {
-        "pg": ">=8.2.0 <8.8.0",
-        "pg-native": ">=2.0.0"
-      },
-      "files": [
-        "force-native.tap.mjs",
-        "native.tap.mjs",
-        "pg.tap.mjs"
-      ]
-    },
-    {
-      "engines": {
-        "node": ">=16.12.0"
-      },
-      "dependencies": {
-        "pg": ">=8.8.0",
+        "pg": ">=8.2.0",
         "pg-native": ">=3.0.0"
       },
       "files": [
-        "force-native.tap.mjs",
-        "native.tap.mjs",
-        "pg.tap.mjs"
+        "force-native.test.mjs",
+        "native.test.mjs",
+        "pg.test.mjs"
       ]
     }
-  ],
-  "dependencies": {}
+  ]
 }

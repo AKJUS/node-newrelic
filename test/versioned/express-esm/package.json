@@ -7,18 +7,18 @@
   "tests": [
     {
       "engines": {
-        "node": ">=16.12.0"
+        "node": ">=18"
       },
       "dependencies": {
-        "express": ">=4.6.0",
-        "express-enrouten": "1.1",
-        "ejs": "2.5.9"
+        "express": {
+          "versions": ">=4.6.0",
+          "samples": 5
+        }
       },
       "files": [
-        "segments.tap.mjs",
-        "transaction-naming.tap.mjs"
+        "segments.test.mjs",
+        "transaction-naming.test.mjs"
       ]
     }
-  ],
-  "dependencies": {}
+  ]
 }

@@ -7,14 +7,14 @@
   "tests": [
     {
       "engines": {
-        "node": ">=16"
+        "node": ">=18"
       },
       "dependencies": {
         "winston": ">=3.0.0",
         "winston-transport": ">=4.0.0"
       },
       "files": [
-        "winston.tap.mjs"
+        "winston.test.mjs"
       ]
     }
   ]

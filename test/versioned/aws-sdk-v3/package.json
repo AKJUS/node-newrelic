@@ -1,15 +1,15 @@
 {
   "name": "aws-sdk-v3-tests",
   "engines": {
-    "node": ">=16.0"
+    "node": ">=18.0"
   },
   "targets": [
     {"name": "@aws-sdk/client-sqs", "minAgentVersion": "8.7.1"},
     {"name": "@aws-sdk/client-sns", "minAgentVersion": "8.7.1"},
     {"name": "@aws-sdk/client-dynamodb", "minAgentVersion": "8.7.1"},
     {"name": "@aws-sdk/lib-dynamodb", "minAgentVersion": "8.7.1"},
-    {"name": "@aws-sdk/smithy-client", "minAgentVersion": "8.7.1"},
-    {"name": "@smithy/smithy-client", "minAgentVersion": "11.0.0"},
+    {"name": "@aws-sdk/smithy-client", "minSupported": "3.47.0", "minAgentVersion": "8.7.1"},
+    {"name": "@smithy/smithy-client", "minSupported": "2.0.0", "minAgentVersion": "11.0.0"},
     {"name": "@aws-sdk/client-bedrock-runtime", "minAgentVersion": "11.13.0"}
   ],
   "version": "0.0.0",
@@ -17,7 +17,7 @@
   "tests": [
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-api-gateway": {
@@ -26,12 +26,12 @@
         }
       },
       "files": [
-        "api-gateway.tap.js"
+        "api-gateway.test.js"
       ]
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-elasticache": {
@@ -40,12 +40,12 @@
         }
       },
       "files": [
-        "elasticache.tap.js"
+        "elasticache.test.js"
       ]
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-elastic-load-balancing": {
@@ -54,12 +54,12 @@
         }
       },
       "files": [
-        "elb.tap.js"
+        "elb.test.js"
       ]
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-lambda": {
@@ -68,12 +68,12 @@
         }
       },
       "files": [
-        "lambda.tap.js"
+        "lambda.test.js"
       ]
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-rds": {
@@ -82,12 +82,12 @@
         }
       },
       "files": [
-        "rds.tap.js"
+        "rds.test.js"
       ]
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-redshift": {
@@ -96,12 +96,12 @@
         }
       },
       "files": [
-        "redshift.tap.js"
+        "redshift.test.js"
       ]
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-rekognition": {
@@ -110,12 +110,12 @@
         }
       },
       "files": [
-        "rekognition.tap.js"
+        "rekognition.test.js"
       ]
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-s3": {
@@ -124,12 +124,12 @@
         }
       },
       "files": [
-        "s3.tap.js"
+        "s3.test.js"
       ]
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-ses": {
@@ -138,12 +138,12 @@
         }
       },
       "files": [
-        "ses.tap.js"
+        "ses.test.js"
       ]
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-sns": {
@@ -152,12 +152,12 @@
         }
       },
       "files": [
-        "sns.tap.js"
+        "sns.test.js"
       ]
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-sqs": {
@@ -166,12 +166,12 @@
         }
       },
       "files": [
-        "sqs.tap.js"
+        "sqs.test.js"
       ]
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "@aws-sdk/client-dynamodb": {
@@ -180,36 +180,34 @@
         }
       },
       "files": [
-        "client-dynamodb.tap.js"
+        "client-dynamodb.test.js"
       ]
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
-        "@aws-sdk/util-dynamodb": "latest",
-        "@aws-sdk/client-dynamodb": "latest",
         "@aws-sdk/lib-dynamodb": {
           "versions": ">3.377.0 ",
           "samples": 10
         }
       },
       "files": [
-        "lib-dynamodb.tap.js"
+        "lib-dynamodb.test.js"
       ]
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
-        "@aws-sdk/client-bedrock-runtime": "^3.474.0"
+        "@aws-sdk/client-bedrock-runtime": ">=3.474.0"
       },
       "files": [
-        "bedrock-chat-completions.tap.js",
-        "bedrock-embeddings.tap.js",
-        "bedrock-negative-tests.tap.js"
+        "bedrock-chat-completions.test.js",
+        "bedrock-embeddings.test.js",
+        "bedrock-negative-tests.test.js"
       ]
     }
   ],

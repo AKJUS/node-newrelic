@@ -8,7 +8,7 @@
   "tests": [
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "aws-sdk": {
@@ -16,12 +16,12 @@
         }
       },
       "files": [
-        "instrumentation-unsupported.tap.js"
+        "instrumentation-unsupported.test.js"
       ]
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
         "aws-sdk": {
@@ -30,28 +30,24 @@
         }
       },
       "files": [
-        "aws-sdk.tap.js",
-        "dynamodb.tap.js",
-        "http-services.tap.js",
-        "instrumentation-supported.tap.js",
-        "s3.tap.js",
-        "sns.tap.js",
-        "sqs.tap.js"
+        "aws-sdk.test.js",
+        "dynamodb.test.js",
+        "http-services.test.js",
+        "instrumentation-supported.test.js",
+        "s3.test.js",
+        "sns.test.js",
+        "sqs.test.js"
       ]
     },
     {
       "engines": {
-        "node": ">=16.0"
+        "node": ">=18.0"
       },
       "dependencies": {
-        "aws-sdk": {
-          "versions": ">=2.463.0",
-          "samples": 10
-        },
         "amazon-dax-client": ">=1.2.5"
       },
       "files": [
-        "amazon-dax-client.tap.js"
+        "amazon-dax-client.test.js"
       ]
     }
   ],

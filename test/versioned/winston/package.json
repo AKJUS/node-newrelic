@@ -6,13 +6,13 @@
   "tests": [
     {
       "engines": {
-        "node": ">=16"
+        "node": ">=18"
       },
       "dependencies": {
         "winston": ">=3.0.0"
       },
       "files": [
-        "winston.tap.js"
+        "winston.test.js"
       ]
     }
   ]

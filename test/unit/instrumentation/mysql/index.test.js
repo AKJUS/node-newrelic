@@ -4,77 +4,58 @@
  */
 
 'use strict'
-
-const tap = require('tap')
+const assert = require('node:assert')
+const test = require('node:test')
 const sinon = require('sinon')
 const proxyquire = require('proxyquire')
 
 const symbols = require('../../../../lib/symbols')
 
-tap.test('mysql instrumentation', (t) => {
-  t.autoend()
+test('mysql instrumentation', async (t) => {
+  t.beforeEach((ctx) => {
+    ctx.nr = {}
 
-  let mockShim
-  let mockMysql
-  let instrumentation
-
-  t.beforeEach(() => {
-    mockShim = {
+    const mockMysql = {
+      createConnection: sinon.stub().returns(),
+      createPool: sinon.stub().returns(),
+      createPoolCluster: sinon.stub().returns()
+    }
+    ctx.nr.mockShim = {
       MYSQL: 'test-mysql',
       setDatastore: sinon.stub().returns(),
+      wrap: sinon.stub().returns(),
       wrapReturn: sinon.stub().returns(),
       isWrapped: sinon.stub().returns(),
       require: sinon.stub().returns(mockMysql)
     }
 
-    mockMysql = {
-      createConnection: sinon.stub().returns(),
-      createPool: sinon.stub().returns(),
-      createPoolCluster: sinon.stub().returns()
-    }
-
-    instrumentation = proxyquire('../../../../lib/instrumentation/mysql/mysql', {})
+    ctx.nr.mockMysql = mockMysql
+    ctx.nr.instrumentation = proxyquire('../../../../lib/instrumentation/mysql/mysql', {})
   })
 
-  t.test('callbackInitialize should set the datastore and symbols', (t) => {
+  await t.test('callbackInitialize should set the datastore and symbols', (t, end) => {
+    const { instrumentation, mockMysql, mockShim } = t.nr
     instrumentation.callbackInitialize(mockShim, mockMysql)
 
-    t.ok(mockShim.setDatastore.calledWith('test-mysql'), 'should set the datastore to mysql')
-    t.equal(
+    assert.ok(mockShim.setDatastore.calledWith('test-mysql'), 'should set the datastore to mysql')
+    assert.equal(
       mockShim[symbols.wrappedPoolConnection],
       false,
       'should default the wrappedPoolConnection symbol to false'
     )
-    t.end()
+    end()
   })
 
-  t.test(
-    'promiseInitialize not should call callbackInitialized if createConnection is already wrapped',
-    (t) => {
-      instrumentation.callbackInitialize = sinon.stub().returns()
-      mockShim.isWrapped.returns(true)
-      instrumentation.promiseInitialize(mockShim, mockMysql)
-
-      t.notOk(
-        mockShim[symbols.wrappedPoolConnection],
-
-        'should not have applied the symbol'
-      )
-      t.end()
-    }
-  )
-
-  t.test('promiseInitialize should call callbackInitialized', (t) => {
-    instrumentation.callbackInitialize = sinon.stub().returns()
-    mockShim.isWrapped.returns(false)
+  await t.test('promiseInitialize should set the datastore and symbols', (t, end) => {
+    const { instrumentation, mockMysql, mockShim } = t.nr
     instrumentation.promiseInitialize(mockShim, mockMysql)
 
-    t.ok(mockShim.setDatastore.calledWith('test-mysql'), 'should set the datastore to mysql')
-    t.equal(
+    assert.ok(mockShim.setDatastore.calledWith('test-mysql'), 'should set the datastore to mysql')
+    assert.equal(
       mockShim[symbols.wrappedPoolConnection],
       false,
       'should default the wrappedPoolConnection symbol to false'
     )
-    t.end()
+    end()
   })
 })

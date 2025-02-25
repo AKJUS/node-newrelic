@@ -7,13 +7,13 @@
     "tests": [
       {
         "engines": {
-          "node": ">=16.12.0"
+          "node": ">=18"
         },
         "dependencies": {
           "parse-json": "6.0.2"
         },
         "files": [
-          "parse-json.tap.mjs"
+          "parse-json.test.mjs"
         ]
       }
     ],
