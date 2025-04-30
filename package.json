@@ -225,7 +225,7 @@
     "@newrelic/newrelic-oss-cli": "^0.1.2",
     "@newrelic/test-utilities": "^8.5.0",
     "@octokit/rest": "^21.1.1",
-    "@slack/bolt": "^3.7.0",
+    "@slack/bolt": "^4.2.1",
     "@smithy/eventstream-codec": "^2.2.0",
     "@smithy/util-utf8": "^2.3.0",
     "ajv": "^6.12.6",
